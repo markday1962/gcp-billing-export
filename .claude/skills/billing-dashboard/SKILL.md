@@ -2,17 +2,18 @@
 name: billing-dashboard
 description: >-
   Runs all three GCP billing queries (services.sql, apicogs.sql,
-  platformcogs.sql) against the billing export table and publishes a single
-  combined dashboard artifact. Use when the user asks to run the billing
-  queries, refresh the cost dashboard, or see services/apicogs/platformcogs
-  "together" or "in one place".
+  platformcogs.sql) plus the AWS Cost Explorer query (aws/services.sh)
+  against the billing export table and publishes a single combined dashboard
+  artifact. Use when the user asks to run the billing queries, refresh the
+  cost dashboard, or see services/apicogs/platformcogs/AWS costs "together"
+  or "in one place".
 ---
 
 # Billing dashboard
 
-Runs `bigquery/services.sql`, `bigquery/apicogs.sql`, and
-`bigquery/platformcogs.sql` from this repo and renders all three results as
-one combined Artifact, instead of three separate ones.
+Runs `bigquery/services.sql`, `bigquery/apicogs.sql`,
+`bigquery/platformcogs.sql`, and `aws/services.sh` from this repo and
+renders all four results as one combined Artifact, instead of separate ones.
 
 ## Steps
 
@@ -30,6 +31,17 @@ one combined Artifact, instead of three separate ones.
    `GROUP BY service.description`, just `SUM(...)` everything into one row)
    to get the true month-to-date total for each — the limited results
    understate the total once there are more than 10 services in scope.
+
+1a. **Also run `aws/services.sh`** (requires an active AWS SSO session for
+   `AdministratorAccess-102369858221` — if it errors with an expired/invalid
+   token, tell the user to run
+   `aws sso login --profile AdministratorAccess-102369858221` themselves and
+   retry, don't try to log in on their behalf). Shape the raw JSON with `jq`
+   per the pipelines in the README: top 10 services by `UnblendedCost`
+   descending for the chart, and the unlimited sum across all services for
+   the summary. This is a wholly separate cloud account/provider from the
+   three GCP queries — never combine its numbers into the GCP summary math,
+   even though it happens to also be USD.
 
 2. **Load the `dataviz` skill** before building any chart — it governs form,
    color, marks, and the six-check validation used here.
@@ -51,8 +63,8 @@ one combined Artifact, instead of three separate ones.
    - 0 rows → say so plainly in that section ("no matching rows this
      period") rather than rendering an empty chart.
 
-3a. **Summary table, at the top of the page, above the three sections.**
-   One row per query — All services (services.sql), API COGS
+3a. **Summary table, at the top of the page, above the sections.**
+   One row per GCP query — All services (services.sql), API COGS
    (apicogs.sql), Platform COGS (platformcogs.sql) — with the same Cost /
    Negotiated savings / Savings programmes / Other savings / Subtotal
    columns, using the un-limited totals from step 1, not the top-10 figures.
@@ -60,17 +72,24 @@ one combined Artifact, instead of three separate ones.
    Platform COGS are cost subsets of the same overall spend in the first
    row (specific projects/services), not spend on top of it, so adding them
    together would double-count. Say this explicitly in a caption under the
-   table.
+   table. Give AWS its own separate summary line/card below this table
+   (not a row inside it) — it's a different provider and account, not a
+   subset of the GCP spend above, so mixing it into the same table would
+   visually imply an additive relationship that doesn't exist.
 
-4. **Build one HTML page with three stacked sections**, in this order:
-   services, platformcogs, apicogs. Reuse the shared visual language from
-   prior dashboards in this project: card-on-page layout, the
+4. **Build one HTML page with four stacked sections**, in this order:
+   services, platformcogs, apicogs, AWS costs. Reuse the shared visual
+   language from prior dashboards in this project: card-on-page layout, the
    light/dark CSS custom-property block from `references/palette.md`, same
    fonts/spacing. Each section gets its own eyebrow + heading identifying
    which query it came from and the date range it covers (services.sql =
    current month; apicogs/platformcogs = current month for now, see
    README's note about switching to previous-month once a full prior
-   month's data exists).
+   month's data exists; aws/services.sh = current calendar month to date,
+   UTC). Label the AWS section clearly with its account
+   (`102369858221`) and currency (USD, same as the GCP figures, but a
+   wholly separate spend — don't let the shared currency symbol imply
+   they're combinable).
 
 5. **Surface known data-quality caveats inline**, next to the section they
    apply to, rather than assuming they're still true — re-derive them from
@@ -80,6 +99,9 @@ one combined Artifact, instead of three separate ones.
      `02DA-B362-D983` — check README's Known issues for current status).
    - `platformcogs.sql`: same check, currently 4 unresolved IDs (see
      README).
+   - AWS section: note that this only shows `UnblendedCost` (no
+     negotiated-savings/RI/SP-discount breakdown yet, unlike the GCP
+     sections) — see README's parity note.
 
 6. **Publish as a single Artifact.** Before publishing, call
    `Artifact({action: "list"})` and reuse the URL of an existing "Billing
