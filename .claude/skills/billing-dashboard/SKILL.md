@@ -2,18 +2,20 @@
 name: billing-dashboard
 description: >-
   Runs all three GCP billing queries (services.sql, apicogs.sql,
-  platformcogs.sql) plus the AWS Cost Explorer query (aws/services.sh)
-  against the billing export table and publishes a single combined dashboard
-  artifact. Use when the user asks to run the billing queries, refresh the
-  cost dashboard, or see services/apicogs/platformcogs/AWS costs "together"
-  or "in one place".
+  platformcogs.sql) plus the AWS Cost Explorer query (aws/services.sh), and
+  includes any Vonage invoice CSVs dropped in vonage/, publishing a single
+  combined dashboard artifact. Use when the user asks to run the billing
+  queries, refresh the cost dashboard, or see
+  services/apicogs/platformcogs/AWS/Vonage costs "together" or "in one
+  place".
 ---
 
 # Billing dashboard
 
 Runs `bigquery/services.sql`, `bigquery/apicogs.sql`,
-`bigquery/platformcogs.sql`, and `aws/services.sh` from this repo and
-renders all four results as one combined Artifact, instead of separate ones.
+`bigquery/platformcogs.sql`, and `aws/services.sh` from this repo, plus any
+invoice CSVs found in `vonage/`, and renders all of it as one combined
+Artifact, instead of separate ones.
 
 ## Steps
 
@@ -42,6 +44,13 @@ renders all four results as one combined Artifact, instead of separate ones.
    the summary. This is a wholly separate cloud account/provider from the
    three GCP queries — never combine its numbers into the GCP summary math,
    even though it happens to also be USD.
+
+1b. **Check for invoice CSVs in `vonage/`.** If any exist, categorize each
+   invoice's line items by `SKU` per the scheme in the README (SMS /
+   Inbound Calls / Outbound Calls / WebSocket / Other) and sum `Usage` per
+   category. Each invoice is its own EUR figure for whatever period it
+   covers (not month-to-date, not USD) — give it its own dashboard section,
+   never fold it into the GCP/AWS summary table.
 
 2. **Load the `dataviz` skill** before building any chart — it governs form,
    color, marks, and the six-check validation used here.
@@ -79,19 +88,24 @@ renders all four results as one combined Artifact, instead of separate ones.
    (2026-08-14) they want AWS as a row in this table, not a separate
    card/section, so keep it there on future runs.
 
-4. **Build one HTML page with four stacked sections**, in this order:
-   services, platformcogs, apicogs, AWS costs. Reuse the shared visual
-   language from prior dashboards in this project: card-on-page layout, the
-   light/dark CSS custom-property block from `references/palette.md`, same
+4. **Build one HTML page with a stacked section per source**, in this
+   order: services, platformcogs, apicogs, AWS costs, then one section per
+   Vonage invoice found (if any). Reuse the shared visual language from
+   prior dashboards in this project: card-on-page layout, the light/dark
+   CSS custom-property block from `references/palette.md`, same
    fonts/spacing. Each section gets its own eyebrow + heading identifying
-   which query it came from and the date range it covers (services.sql =
-   current month; apicogs/platformcogs = current month for now, see
+   which query/file it came from and the date range it covers (services.sql
+   = current month; apicogs/platformcogs = current month for now, see
    README's note about switching to previous-month once a full prior
    month's data exists; aws/services.sh = current calendar month to date,
-   UTC). Label the AWS section clearly with its account
-   (`102369858221`) and currency (USD, same as the GCP figures, but a
-   wholly separate spend — don't let the shared currency symbol imply
-   they're combinable).
+   UTC; each Vonage invoice = whatever single date/period it covers). Label
+   the AWS section clearly with its account (`102369858221`) and currency
+   (USD, same as the GCP figures, but a wholly separate spend — don't let
+   the shared currency symbol imply they're combinable). Label each Vonage
+   section with its invoice number and currency (EUR) — a different
+   currency from GCP/AWS, so use a currency-aware formatter (see the
+   `fmt`/`fmtCompact`/`renderSimpleBarChart`/`renderSimpleTable` currency
+   parameter already in the dashboard's script) rather than hardcoding `$`.
 
 5. **Surface known data-quality caveats inline**, next to the section they
    apply to, rather than assuming they're still true — re-derive them from
@@ -104,6 +118,9 @@ renders all four results as one combined Artifact, instead of separate ones.
    - AWS section: note that this only shows `UnblendedCost` (no
      negotiated-savings/RI/SP-discount breakdown yet, unlike the GCP
      sections) — see README's parity note.
+   - Vonage section(s): note the currency (EUR) and that the figure is a
+     single invoice/period, not month-to-date — don't let it get compared
+     directly against the GCP/AWS numbers without that caveat.
 
 6. **Publish as a single Artifact.** Before publishing, call
    `Artifact({action: "list"})` and reuse the URL of an existing "Billing

@@ -67,6 +67,28 @@ Cost Explorer was chosen as the first pass for speed (no new infra); a CUR
 export into BigQuery remains the option for full parity with the GCP query
 shape if that's wanted later.
 
+### `vonage/`
+
+Manually-dropped Vonage/Nexmo invoice CSVs (traffic reports), not a live
+query — add a new invoice file here when one arrives. Each file has one row
+per usage line item, with columns including `Product_Group`, `SKU`, `Usage`
+(cost), and `Currency` (typically EUR).
+
+For a cost-by-category breakdown of an invoice, categorize by `SKU`:
+
+- **SMS** — `Inbound SMS`, `Outbound SMS`
+- **Inbound Calls** — `VAPI - Inbound`
+- **Outbound Calls** — `VAPI - Outbound`
+- **WebSocket** — `WebSocket` (voice media streaming) — kept as its own
+  category rather than folded into Inbound/Outbound Calls or lumped into
+  "Other", per how this was categorized for `INV00182587`
+- **Other** — everything else (number rentals, `IP Calls`, `Standard TTS`)
+
+Each invoice is a single EUR figure for whatever usage period it covers
+(e.g. `INV00182587` is a single day, 2026-06-01) — not a month-to-date
+figure and not USD, so it doesn't belong in the GCP/AWS summary table;
+show it as its own dashboard section instead.
+
 ## Changes from the original console-generated queries
 
 All three queries were originally exported as-is from the GCP Billing
