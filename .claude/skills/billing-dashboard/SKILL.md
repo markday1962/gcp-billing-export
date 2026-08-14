@@ -63,19 +63,21 @@ renders all four results as one combined Artifact, instead of separate ones.
    - 0 rows → say so plainly in that section ("no matching rows this
      period") rather than rendering an empty chart.
 
-3a. **Summary table, at the top of the page, above the sections.**
-   One row per GCP query — All services (services.sql), API COGS
-   (apicogs.sql), Platform COGS (platformcogs.sql) — with the same Cost /
-   Negotiated savings / Savings programmes / Other savings / Subtotal
-   columns, using the un-limited totals from step 1, not the top-10 figures.
-   No grand-total row and no summed "total of totals": API COGS and
-   Platform COGS are cost subsets of the same overall spend in the first
-   row (specific projects/services), not spend on top of it, so adding them
-   together would double-count. Say this explicitly in a caption under the
-   table. Give AWS its own separate summary line/card below this table
-   (not a row inside it) — it's a different provider and account, not a
-   subset of the GCP spend above, so mixing it into the same table would
-   visually imply an additive relationship that doesn't exist.
+3a. **Summary table, at the top of the page, above the sections.** One row
+   per query — All services (services.sql), API COGS (apicogs.sql),
+   Platform COGS (platformcogs.sql), AWS all services (aws/services.sh) —
+   with the same Cost / Negotiated savings / Savings programmes / Other
+   savings / Subtotal columns, using the un-limited totals from step 1, not
+   the top-10 figures. For the AWS row, Cost and Subtotal are both the same
+   `UnblendedCost` sum and the three savings columns are `0` (no breakdown
+   available yet — see step 1a). No grand-total row and no summed "total of
+   totals": API COGS and Platform COGS are cost subsets of the same overall
+   spend in the first row (specific projects/services), not spend on top of
+   it, so adding them together would double-count; AWS is a wholly separate
+   cloud account, not a subset of or addition to the GCP rows either. Say
+   both of these explicitly in a caption under the table — user confirmed
+   (2026-08-14) they want AWS as a row in this table, not a separate
+   card/section, so keep it there on future runs.
 
 4. **Build one HTML page with four stacked sections**, in this order:
    services, platformcogs, apicogs, AWS costs. Reuse the shared visual

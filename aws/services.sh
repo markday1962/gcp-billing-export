@@ -10,6 +10,7 @@
 # it (top N, sort, sum) with jq downstream, same pattern as piping bq's JSON
 # output through jq. See README.md for the jq pipelines used by the
 # billing-dashboard skill.
+# ! aws sso login --profile AdministratorAccess-102369858221
 set -euo pipefail
 
 PROFILE="${1:-AdministratorAccess-102369858221}"
