@@ -15,9 +15,8 @@ savings, Subtotal. Sorted by `Subtotal DESC` and capped at `LIMIT 10` — top
 ### `bigquery/platformcogs.sql`
 
 Same shape as `services.sql`, scoped to the wider set of projects/services
-that make up platform (non-API) COGS — 8 projects, 29 service IDs (4 of
-which are unresolved — see Known issues). Also sorted `Subtotal DESC` and
-capped at `LIMIT 10`.
+that make up platform (non-API) COGS — 8 projects, 25 service IDs. Also
+sorted `Subtotal DESC` and capped at `LIMIT 10`.
 
 ### `bigquery/apicogs.sql`
 
@@ -73,12 +72,15 @@ Additional fixes specific to `apicogs.sql` and `platformcogs.sql`:
 
 ## Known issues
 
-- **`platformcogs.sql`: 4 of the 29 `service.id` filter values don't match
-  any service in this billing export** — `9B82-7513-9D1C`,
+- **`platformcogs.sql` previously had 4 `service.id` filter values that
+  didn't match any service in this billing export** — `9B82-7513-9D1C`,
   `C5E6-A27F-6A44`, `FBF2-FC68-171A`, `1DB1-3CD3-35A3`. Checked against the
   full distinct list of 39 `service.id` values present in the export table
-  (with and without the `services/` prefix) — no match. These need the
-  correct IDs before `platformcogs.sql`'s totals can be considered complete.
+  (with and without the `services/` prefix) — no match. Since they matched
+  zero rows, removing them from the filter has no effect on totals; they
+  were dropped to keep the query honest about what it's actually scoping.
+  If platform COGS coverage for those services is needed, the correct IDs
+  still need to be found and re-added.
 - **`apicogs.sql`: `02DA-B362-D983` does not match any service in this
   billing export.** Same check as above — no match. Either this service has
   never had usage on this billing account, or it's the wrong ID for whatever

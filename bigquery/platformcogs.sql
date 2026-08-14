@@ -68,18 +68,14 @@ WHERE
     '152E-C115-5142',
     '9662-B51E-5089',
     '95FF-2EF5-5EA1',
-    '9B82-7513-9D1C',
     '6F81-5844-456A',
     '82AF-DE7A-51D0',
     '7EC6-CE53-9E39',
-    'C5E6-A27F-6A44',
     'DC5D-D207-FD2F',
     'CCD8-9BF1-090E',
     'E505-1604-58F8',
     'EE82-7A5E-871C',
-    'FBF2-FC68-171A',
     '2062-016F-44A2',
-    '1DB1-3CD3-35A3',
     'C7E2-9256-1C43') )
 SELECT
 service.description AS `Service Description`,
