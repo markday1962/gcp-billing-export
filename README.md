@@ -2,24 +2,25 @@
 
 BigQuery queries against the GCP billing export table
 `prj-ufonia-cmn-lon-billing-01.bq_dataset_billing_ufonia_invoice.gcp_billing_export_resource_v1_0194CA_24F6D5_7ED48D`,
-plus an AWS Cost Explorer query for the AWS side of spend.
+plus an AWS query against a CUR-to-BigQuery import table for the AWS side of
+spend (see `aws-bigquery-ingress/README.md` for that pipeline).
 
 ## Queries
 
-### `bigquery/services.sql`
+### `bigquery-sql/services.sql`
 
 Cost broken down by service (`service.description`) for the current calendar
 month, with columns: Cost, Negotiated savings, Savings programmes, Other
 savings, Subtotal. Sorted by `Subtotal DESC` and capped at `LIMIT 10` — top
 10 services by spend, not the full list.
 
-### `bigquery/platformcogs.sql`
+### `bigquery-sql/platformcogs.sql`
 
 Same shape as `services.sql`, scoped to the wider set of projects/services
 that make up platform (non-API) COGS — 8 projects, 25 service IDs. Also
 sorted `Subtotal DESC` and capped at `LIMIT 10`.
 
-### `bigquery/apicogs.sql`
+### `bigquery-sql/apicogs.sql`
 
 Same shape as `services.sql`, scoped to specific projects and services (COGS
 for API-based services):
@@ -27,47 +28,38 @@ for API-based services):
 - Projects: `prj-ufonia-prd-lon-svc-01` (870453169286), `prj-ufonia-prd-lon-host-01` (1025855247143)
 - Services: `63DE-82AB-F564` (Cloud Speech API), `02DA-B362-D983` (unresolved — see Known issues)
 
-### `aws/services.sh`
+### `bigquery-sql/aws_services.sql`
 
-Cost by service for the current calendar month to date (UTC), via the AWS
-Cost Explorer API (`aws ce get-cost-and-usage`), for AWS account
-`102369858221` (profile `AdministratorAccess-102369858221`). Excludes
-`RECORD_TYPE = "Tax"`, to match the GCP queries' exclusion of tax rows.
+Cost by service for the current calendar month (Europe/London, matching
+`services.sql`'s window), for AWS account `453829601976`. Sourced from
+`bg_dataset_aws_cost_and_usage.aws_cost_and_usage`, a BigQuery table
+populated daily by a separate CUR-to-BigQuery import pipeline — see
+`aws-bigquery-ingress/README.md` for the full design (AWS Data Export → keyless OIDC
+federation → Cloud Run Job → BigQuery). Excludes `line_item_type = 'Tax'`,
+to match the GCP queries' exclusion of tax rows. Sorted by `Cost DESC` and
+capped at `LIMIT 10`, same shape as `services.sql`.
 
-Usage: `aws/services.sh [profile]` prints the raw Cost Explorer JSON
-response to stdout (grouped by `SERVICE`, metric `UnblendedCost`) — shape it
-with `jq` downstream, e.g. top 10 by cost descending:
+For the previous calendar month instead of the current one, see
+`bigquery-sql/aws_monthly_cost.sql` — same `CURRENT_DATE`-relative pattern,
+shifted back one month, so it always reflects "last month" without editing.
 
-```sh
-aws/services.sh | jq -r '
-  .ResultsByTime[0].Groups
-  | map({service: .Keys[0], cost: (.Metrics.UnblendedCost.Amount | tonumber)})
-  | sort_by(-.cost)
-  | .[0:10][]
-'
-```
-
-or the unlimited month-to-date total across every service:
-
-```sh
-aws/services.sh | jq '[.ResultsByTime[0].Groups[].Metrics.UnblendedCost.Amount | tonumber] | add'
-```
-
-Requires an active AWS SSO session for the profile
-(`aws sso login --profile AdministratorAccess-102369858221`) — tokens expire
-and need re-running periodically.
+Note the underlying table only has data from when the CUR export started
+(2026-08-01) onward — querying an earlier month returns zero rows until
+AWS backfills further back or enough time passes.
 
 **Not yet at parity with the GCP queries:** this only surfaces
 `UnblendedCost` (a single number per service), not the
 Cost / Negotiated savings / Savings programmes / Other savings breakdown the
-GCP queries have. Getting the equivalent breakdown out of Cost Explorer
-would mean also pulling `NetUnblendedCost` (list-price vs. negotiated/RI/SP
-discounts) and a `RECORD_TYPE = "Credit"` breakout — left for a follow-up.
-Cost Explorer was chosen as the first pass for speed (no new infra); a CUR
-export into BigQuery remains the option for full parity with the GCP query
-shape if that's wanted later.
+GCP queries have. Getting the equivalent breakdown would mean also loading
+`reservation`/`savingsPlan` effective-cost fields from CUR (present in the
+BigQuery schema already, just not used in this query yet) — left for a
+follow-up.
 
-### `vonage/`
+This replaced an earlier AWS Cost Explorer script (`aws/services.sh`,
+account `102369858221`) that was removed once this pipeline reached
+parity for the dashboard's needs.
+
+### `vonage-bigquery-ingress/`
 
 Manually-dropped Vonage/Nexmo invoice CSVs (traffic reports), not a live
 query — add a new invoice file here when one arrives. Each file has one row
