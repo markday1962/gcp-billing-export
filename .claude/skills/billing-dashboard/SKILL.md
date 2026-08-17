@@ -46,8 +46,11 @@ combined Artifact, instead of separate ones.
    invoice's line items by `SKU` per the scheme in the README (SMS /
    Inbound Calls / Outbound Calls / WebSocket / Other) and sum `Usage` per
    category. Each invoice is its own EUR figure for whatever period it
-   covers (not month-to-date, not USD) — give it its own dashboard section,
-   never fold it into the GCP/AWS summary table.
+   covers (not month-to-date, not USD) — give it its own dashboard section
+   AND add it as its own row in the summary table (step 3a; user confirmed
+   2026-08-17 they want it there for visibility) — but never combine its
+   EUR total with any of the USD rows, and never let it imply the table
+   sums to a grand total.
 
 2. **Load the `dataviz` skill** before building any chart — it governs form,
    color, marks, and the six-check validation used here.
@@ -70,20 +73,25 @@ combined Artifact, instead of separate ones.
      period") rather than rendering an empty chart.
 
 3a. **Summary table, at the top of the page, above the sections.** One row
-   per query — All services (services.sql), API COGS (apicogs.sql),
-   Platform COGS (platformcogs.sql), AWS all services (aws_services.sql) —
-   with the same Cost / Negotiated savings / Savings programmes / Other
-   savings / Subtotal columns, using the un-limited totals from step 1, not
-   the top-10 figures. For the AWS row, Cost and Subtotal are both the same
-   `UnblendedCost` sum and the three savings columns are `0` (no breakdown
-   available yet — see step 1a). No grand-total row and no summed "total of
+   per query/source — All services (services.sql), API COGS (apicogs.sql),
+   Platform COGS (platformcogs.sql), AWS all services (aws_services.sql),
+   and one row per Vonage invoice found — with the same Cost / Negotiated
+   savings / Savings programmes / Other savings / Subtotal columns, using
+   the un-limited totals from step 1, not the top-10 figures. For the AWS
+   row, Cost and Subtotal are both the same `UnblendedCost` sum and the
+   three savings columns are `0` (no breakdown available yet — see step
+   1a). For each Vonage row, Cost and Subtotal are both the invoice's
+   total (all SKU categories summed) in **EUR**, three savings columns
+   `0` — make the table currency-aware per row (don't render the EUR
+   figure with a `$` prefix). No grand-total row and no summed "total of
    totals": API COGS and Platform COGS are cost subsets of the same overall
    spend in the first row (specific projects/services), not spend on top of
    it, so adding them together would double-count; AWS is a wholly separate
-   cloud account, not a subset of or addition to the GCP rows either. Say
-   both of these explicitly in a caption under the table — user confirmed
-   (2026-08-14) they want AWS as a row in this table, not a separate
-   card/section, so keep it there on future runs.
+   cloud account, not a subset of or addition to the GCP rows either;
+   Vonage is a different currency entirely on top of that. Say all of this
+   explicitly in a caption under the table — user confirmed (2026-08-14)
+   they want AWS as a row in this table, and (2026-08-17) Vonage too, not
+   separate cards only — so keep both there on future runs.
 
 4. **Build one HTML page with a stacked section per source**, in this
    order: services, platformcogs, apicogs, AWS costs, then one section per
