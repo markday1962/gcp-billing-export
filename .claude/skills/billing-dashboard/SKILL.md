@@ -1,8 +1,8 @@
 ---
 name: billing-dashboard
 description: >-
-  Runs all three GCP billing queries (services.sql, apicogs.sql,
-  platformcogs.sql) plus the AWS query (aws_services.sql), and includes any
+  Runs all three GCP billing queries (gcp_all_services.sql, gcp_api_cogs.sql,
+  gcp_platform_cogs.sql) plus the AWS query (aws_services.sql), and includes any
   Vonage invoice CSVs dropped in vonage-bigquery-loader/, publishing a single combined
   dashboard artifact. Use when the user asks to run the billing queries,
   refresh the cost dashboard, or see
@@ -12,8 +12,8 @@ description: >-
 
 # Billing dashboard
 
-Runs `bigquery-sql/services.sql`, `bigquery-sql/apicogs.sql`,
-`bigquery-sql/platformcogs.sql`, and `bigquery-sql/aws_services.sql` from this repo,
+Runs `bigquery-sql/gcp_all_services.sql`, `bigquery-sql/gcp_api_cogs.sql`,
+`bigquery-sql/gcp_platform_cogs.sql`, and `bigquery-sql/aws_services.sql` from this repo,
 plus any invoice CSVs found in `vonage-bigquery-loader/`, and renders all of it as one
 combined Artifact, instead of separate ones.
 
@@ -22,13 +22,13 @@ combined Artifact, instead of separate ones.
 1. **Run all four queries** against `prj-ufonia-cmn-lon-billing-01`, one
    `bq query --use_legacy_sql=false --project_id=prj-ufonia-cmn-lon-billing-01`
    call per file:
-   - `bigquery-sql/services.sql`
-   - `bigquery-sql/apicogs.sql`
-   - `bigquery-sql/platformcogs.sql`
+   - `bigquery-sql/gcp_all_services.sql`
+   - `bigquery-sql/gcp_api_cogs.sql`
+   - `bigquery-sql/gcp_platform_cogs.sql`
    - `bigquery-sql/aws_services.sql`
 
    These can run in parallel (independent Bash calls in one message).
-   `services.sql`, `platformcogs.sql`, and `aws_services.sql` are all capped
+   `gcp_all_services.sql`, `gcp_platform_cogs.sql`, and `aws_services.sql` are all capped
    at `LIMIT 10`, so for the summary table (step 3a) also run each one's
    un-limited equivalent (same CTE/filters, drop the `LIMIT 10` and the
    `GROUP BY`, just `SUM(...)` everything into one row) to get the true
@@ -57,8 +57,8 @@ combined Artifact, instead of separate ones.
 
 3. **Pick the form per section, independently**, based on how many rows each
    query actually returned this run (don't assume from a previous run).
-   `services.sql`, `platformcogs.sql`, and `aws_services.sql` are all capped
-   at `LIMIT 10` (top 10 by Subtotal/Cost) — `apicogs.sql` is not:
+   `gcp_all_services.sql`, `gcp_platform_cogs.sql`, and `aws_services.sql` are all capped
+   at `LIMIT 10` (top 10 by Subtotal/Cost) — `gcp_api_cogs.sql` is not:
    - 1 row → a stat tile (label + value + the savings breakdown), not a
      one-bar chart.
    - 2+ rows → a horizontal bar chart, one hue (`--bar`/sequential blue from
@@ -73,8 +73,8 @@ combined Artifact, instead of separate ones.
      period") rather than rendering an empty chart.
 
 3a. **Summary table, at the top of the page, above the sections.** One row
-   per query/source — All services (services.sql), API COGS (apicogs.sql),
-   Platform COGS (platformcogs.sql), AWS all services (aws_services.sql),
+   per query/source — All services (gcp_all_services.sql), API COGS (gcp_api_cogs.sql),
+   Platform COGS (gcp_platform_cogs.sql), AWS all services (aws_services.sql),
    and one row per Vonage invoice found — with the same Cost / Negotiated
    savings / Savings programmes / Other savings / Subtotal columns, using
    the un-limited totals from step 1, not the top-10 figures. For the AWS
@@ -99,11 +99,11 @@ combined Artifact, instead of separate ones.
    prior dashboards in this project: card-on-page layout, the light/dark
    CSS custom-property block from `references/palette.md`, same
    fonts/spacing. Each section gets its own eyebrow + heading identifying
-   which query/file it came from and the date range it covers (services.sql
+   which query/file it came from and the date range it covers (gcp_all_services.sql
    = current month; apicogs/platformcogs = current month for now, see
    README's note about switching to previous-month once a full prior
    month's data exists; aws_services.sql = current calendar month,
-   Europe/London, same as services.sql; each Vonage invoice = whatever
+   Europe/London, same as gcp_all_services.sql; each Vonage invoice = whatever
    single date/period it covers). Label the AWS section clearly with its
    account (`453829601976`) and currency (USD, same as the GCP figures, but
    a wholly separate spend — don't let the shared currency symbol imply
@@ -116,10 +116,10 @@ combined Artifact, instead of separate ones.
 5. **Surface known data-quality caveats inline**, next to the section they
    apply to, rather than assuming they're still true — re-derive them from
    the actual query output each run:
-   - `apicogs.sql`: flag any `service.id` filter value that appears in the
+   - `gcp_api_cogs.sql`: flag any `service.id` filter value that appears in the
      query's WHERE clause but not in the returned rows (e.g. the unresolved
      `02DA-B362-D983` — check README's Known issues for current status).
-   - `platformcogs.sql`: same check, currently 4 unresolved IDs (see
+   - `gcp_platform_cogs.sql`: same check, currently 4 unresolved IDs (see
      README).
    - AWS section: note that this only shows `UnblendedCost` (no
      negotiated-savings/RI/SP-discount breakdown yet, unlike the GCP
