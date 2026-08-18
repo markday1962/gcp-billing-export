@@ -2,8 +2,10 @@
 
 BigQuery queries against the GCP billing export table
 `prj-ufonia-cmn-lon-billing-01.bq_dataset_billing_ufonia_invoice.gcp_billing_export_resource_v1_0194CA_24F6D5_7ED48D`,
-plus an AWS query against a CUR-to-BigQuery import table for the AWS side of
-spend (see `aws-bigquery-loader/README.md` for that pipeline).
+plus an AWS query against a CUR-to-BigQuery import table (see
+`aws-bigquery-loader/README.md`) and a Vonage query against a Reports
+API-to-BigQuery import table (see `vonage-bigquery-loader/README.md`) for
+the non-GCP sides of spend.
 
 ## Queries
 
@@ -43,9 +45,9 @@ For the previous calendar month instead of the current one, see
 `bigquery-sql/aws_monthly_cost.sql` — same `CURRENT_DATE`-relative pattern,
 shifted back one month, so it always reflects "last month" without editing.
 
-Note the underlying table only has data from when the CUR export started
-(2026-08-01) onward — querying an earlier month returns zero rows until
-AWS backfills further back or enough time passes.
+Note the underlying table's earliest date depends on what's been backfilled
+so far (check `MIN(usage_date)` if in doubt) — querying a month before that
+returns zero rows.
 
 **Not yet at parity with the GCP queries:** this only surfaces
 `UnblendedCost` (a single number per service), not the
@@ -59,27 +61,25 @@ This replaced an earlier AWS Cost Explorer script (`aws/services.sh`,
 account `102369858221`) that was removed once this pipeline reached
 parity for the dashboard's needs.
 
-### `vonage-bigquery-loader/`
+### `bigquery-sql/vonage_services.sql`
 
-Manually-dropped Vonage/Nexmo invoice CSVs (traffic reports), not a live
-query — add a new invoice file here when one arrives. Each file has one row
-per usage line item, with columns including `Product_Group`, `SKU`, `Usage`
-(cost), and `Currency` (typically EUR).
+Cost by category (`SMS`, `Inbound Calls`, `Outbound Calls`, `WebSocket`,
+`Other`) for the current calendar month (Europe/London, matching
+`gcp_all_services.sql`'s window), sourced from
+`bq_dataset_vonage_cost_and_usage.vonage_cost_and_usage`, a BigQuery table
+populated daily by the Vonage Reports API import pipeline — see
+`vonage-bigquery-loader/README.md` for the full design. No `LIMIT` (at most
+5 category rows).
 
-For a cost-by-category breakdown of an invoice, categorize by `SKU`:
+**Currency is EUR, not USD** — never combine this query's totals with the
+GCP/AWS rows. Every SMS row's `currency` field comes back blank from
+Vonage's own API on this account (a data quirk, not a pipeline bug) — the
+query sums `total_price` regardless of that, so treat the result as EUR to
+match every other category rather than a fully confirmed figure.
 
-- **SMS** — `Inbound SMS`, `Outbound SMS`
-- **Inbound Calls** — `VAPI - Inbound`
-- **Outbound Calls** — `VAPI - Outbound`
-- **WebSocket** — `WebSocket` (voice media streaming) — kept as its own
-  category rather than folded into Inbound/Outbound Calls or lumped into
-  "Other", per how this was categorized for `INV00182587`
-- **Other** — everything else (number rentals, `IP Calls`, `Standard TTS`)
-
-Each invoice is a single EUR figure for whatever usage period it covers
-(e.g. `INV00182587` is a single day, 2026-06-01) — not a month-to-date
-figure and not USD, so it doesn't belong in the GCP/AWS summary table;
-show it as its own dashboard section instead.
+This replaced the earlier manual process of dropping Vonage/Nexmo invoice
+CSVs into `vonage-bigquery-loader/` by hand — that folder now holds the
+pipeline's Terraform/Cloud Run Job code instead of invoice files.
 
 ## Changes from the original console-generated queries
 
