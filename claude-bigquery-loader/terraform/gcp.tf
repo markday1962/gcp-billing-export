@@ -1,7 +1,7 @@
 # Part 2 — GCP side: service account, Secret Manager, BigQuery target
 #
 # secretmanager.googleapis.com is already enabled on this project (applied
-# by vonage-bigquery-ingress/terraform's state) — not re-declared here to
+# by vonage-bigquery-loader/terraform's state) — not re-declared here to
 # avoid two Terraform states both claiming ownership of the same API
 # enablement.
 

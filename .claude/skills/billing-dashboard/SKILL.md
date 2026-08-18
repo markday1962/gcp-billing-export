@@ -3,7 +3,7 @@ name: billing-dashboard
 description: >-
   Runs all three GCP billing queries (services.sql, apicogs.sql,
   platformcogs.sql) plus the AWS query (aws_services.sql), and includes any
-  Vonage invoice CSVs dropped in vonage-bigquery-ingress/, publishing a single combined
+  Vonage invoice CSVs dropped in vonage-bigquery-loader/, publishing a single combined
   dashboard artifact. Use when the user asks to run the billing queries,
   refresh the cost dashboard, or see
   services/apicogs/platformcogs/AWS/Vonage costs "together" or "in one
@@ -14,7 +14,7 @@ description: >-
 
 Runs `bigquery-sql/services.sql`, `bigquery-sql/apicogs.sql`,
 `bigquery-sql/platformcogs.sql`, and `bigquery-sql/aws_services.sql` from this repo,
-plus any invoice CSVs found in `vonage-bigquery-ingress/`, and renders all of it as one
+plus any invoice CSVs found in `vonage-bigquery-loader/`, and renders all of it as one
 combined Artifact, instead of separate ones.
 
 ## Steps
@@ -36,13 +36,13 @@ combined Artifact, instead of separate ones.
    once there are more than 10 services in scope.
 
 1a. **`aws_services.sql` reads from `bg_dataset_aws_cost_and_usage.aws_cost_and_usage`**,
-   populated daily by a separate Cloud Run Job (see `aws-bigquery-ingress/README.md` for the
+   populated daily by a separate Cloud Run Job (see `aws-bigquery-loader/README.md` for the
    full CUR-to-BigQuery pipeline) — no AWS SSO session needed to query it,
    it's plain BigQuery like the other three. This is a wholly separate cloud
    account/provider from the three GCP queries — never combine its numbers
    into the GCP summary math, even though it happens to also be USD.
 
-1b. **Check for invoice CSVs in `vonage-bigquery-ingress/`.** If any exist, categorize each
+1b. **Check for invoice CSVs in `vonage-bigquery-loader/`.** If any exist, categorize each
    invoice's line items by `SKU` per the scheme in the README (SMS /
    Inbound Calls / Outbound Calls / WebSocket / Other) and sum `Usage` per
    category. Each invoice is its own EUR figure for whatever period it
@@ -125,7 +125,7 @@ combined Artifact, instead of separate ones.
      negotiated-savings/RI/SP-discount breakdown yet, unlike the GCP
      sections) — see README's parity note. Also note the data only goes
      back to when the CUR export started (2026-08-01 as of this writing —
-     check `aws-bigquery-ingress/README.md` for the current earliest date) — a
+     check `aws-bigquery-loader/README.md` for the current earliest date) — a
      previous-month AWS section will return zero rows until then.
    - Vonage section(s): note the currency (EUR) and that the figure is a
      single invoice/period, not month-to-date — don't let it get compared

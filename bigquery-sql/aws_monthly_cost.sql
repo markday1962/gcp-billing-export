@@ -1,5 +1,5 @@
 -- AWS cost by service for the previous calendar month (Europe/London), from
--- the CUR-to-BigQuery import pipeline (see aws-bigquery-ingress/README.md). Excludes
+-- the CUR-to-BigQuery import pipeline (see aws-bigquery-loader/README.md). Excludes
 -- line_item_type = 'Tax', to match the GCP queries' exclusion of
 -- tax/adjustment rows. Same CURRENT_DATE-relative pattern as
 -- bigquery-sql/services.sql, shifted back one month — for the current calendar
