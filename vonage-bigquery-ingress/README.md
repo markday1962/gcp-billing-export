@@ -17,10 +17,14 @@ The AWS pipeline (`aws-bigquery-ingress/`) uses keyless OIDC federation because 
 Endpoints (base `https://api.nexmo.com`), all HTTP Basic Auth (`base64(api_key:api_secret)`):
 
 1. **`POST /v2/reports`** — request an async report. Body: `product` (one of `SMS`, `VOICE-CALL`, `VOICE-TTS`, `WEBSOCKET-CALL`, and others — **one product per request**, not a list), `account_id`, `direction` (`inbound` or `outbound`), `date_start`/`date_end` (ISO 8601). Returns `{request_id, request_status, _links: {self, download_report}}`.
-2. **`GET /v2/reports/{request_id}`** — poll until `request_status` is `SUCCESS` (or `FAILED`/`ABORTED`/`TRUNCATED` — log and skip those).
-3. **`GET /v3/media/{file_id}`** (from `_links.download_report.href`) — downloads a **zip** containing one CSV. Available for 72 hours.
+2. **`GET /v2/reports/{request_id}`** — poll until `request_status` is `SUCCESS` (or `FAILED`/`ABORTED`/`TRUNCATED` — log and skip those). **Reports are only retrievable for 4 days** after creation — after that the request itself is gone, not just the download link.
+3. **`GET /v3/media/{file_id}`** (from `_links.download_report.href`) — downloads a **zip** containing one CSV. Available for 72 hours (a separate, shorter window inside the 4-day report retention).
 
 Rate limits: 5 req/s async, 10 req/s sync.
+
+**Auth confirmed with Vonage support (2026-08-18):** a *secondary* API key is explicitly the wrong tool here — it shares the same balance/pricing/routing as the primary key and exists for credential separation, not billing automation. Use the **primary** account's API key/secret (what `main.py` already expects via `VONAGE_API_KEY`/`VONAGE_API_SECRET`). Support also confirmed: for postpaid accounts, invoices land in the primary account email monthly (first week of the month) and are downloadable from the Customer Dashboard under Billing > Payments > Payment History — that manual path still exists as a fallback/cross-check alongside this pipeline.
+
+**Full product list** (per Vonage's API reference, wider than what this pipeline currently pulls): `SMS`, `SMS-TRAFFIC-CONTROL`, `VOICE-CALL`, `VOICE-FAILED`, `VOICE-TTS`, `IN-APP-VOICE`, `WEBSOCKET-CALL`, `ASR`, `AMD`, `VERIFY-API`, `VERIFY-V2`, `NUMBER-INSIGHT`, `CONVERSATION-EVENT`, `CONVERSATION-MESSAGE`, `MESSAGES`, `VIDEO-API`, `NETWORK-API-EVENT`, `REPORTS-USAGE`. `VONAGE_PRODUCTS` currently only requests `SMS,VOICE-CALL,VOICE-TTS,WEBSOCKET-CALL` — check a real invoice once credentials exist to confirm nothing else is billed (e.g. `VERIFY-API` if 2FA is in use).
 
 ### CSV schema — confirmed for SMS, unconfirmed for everything else
 
@@ -39,11 +43,11 @@ The manual traffic-report CSVs (see the SKU categorization below) include **numb
 
 1. **Service account** `vonage-importer@<GCP_PROJECT_ID>.iam.gserviceaccount.com` — the Cloud Run Job's execution identity. Needs `roles/secretmanager.secretAccessor` (to read the Vonage credentials) and `roles/bigquery.dataEditor` + `roles/bigquery.jobUser` (same pattern as the AWS pipeline).
 
-2. **Secret Manager** holds the Vonage API key and secret. Terraform creates the **secret containers only** (`google_secret_manager_secret`) — it deliberately does **not** create a secret version, so no credential material ever touches Terraform state or this repo. Add the real values yourself once you have them:
+2. **Secret Manager** holds the Vonage credentials as a single secret, `vonage-master-api-keys` — a JSON blob shaped exactly like the telephony service's existing `vonage-creds-telephony-service` secret in `prj-ufonia-prd-lon-svc-01` (`VONAGE_API_KEY`, `VONAGE_API_SECRET`, `VONAGE_APP_ID`, `VONAGE_PRIVATE_KEY`, `VONAGE_SIGNATURE_SECRET`) — this pipeline only reads the first two. **Decided 2026-08-18:** rather than a cross-project read of the telephony service's secret, or the pipeline's own separate `vonage-api-key`/`vonage-api-secret` string secrets (an earlier design, now removed — see git history), the real credential value is duplicated once into this project's own `vonage-master-api-keys` secret. Terraform creates the **container only** (`google_secret_manager_secret`) — it deliberately does **not** create a secret version, so no credential material ever touches Terraform state or this repo. To (re)populate it:
 
    ```sh
-   echo -n "<VONAGE_API_KEY>" | gcloud secrets versions add vonage-api-key --data-file=- --project=<GCP_PROJECT_ID>
-   echo -n "<VONAGE_API_SECRET>" | gcloud secrets versions add vonage-api-secret --data-file=- --project=<GCP_PROJECT_ID>
+   gcloud secrets versions access latest --secret=vonage-creds-telephony-service --project=<TELEPHONY_SERVICE_PROJECT_ID> \
+     | gcloud secrets versions add vonage-master-api-keys --data-file=- --project=<GCP_PROJECT_ID>
    ```
 
 3. **BigQuery dataset/table** — see `terraform/gcp.tf` for the exact schema. Partitioned by `usage_date`, deduped by `record_id` (see the dedup-key note below), with a `category` column matching the manual traffic report's existing scheme (`SMS`, `Inbound Calls`, `Outbound Calls`, `WebSocket`, `Other`) so this can slot into the same dashboard queries once it's live.
@@ -64,13 +68,35 @@ The manual traffic-report CSVs (see the SKU categorization below) include **numb
 
 **Default product list** (`VONAGE_PRODUCTS` env var, comma-separated): `SMS,VOICE-CALL,VOICE-TTS,WEBSOCKET-CALL` — covers what the manual traffic report's usage-based SKUs map to. Extend it if the account bills for other Reports API products (see the full list in Part 1).
 
+**Credentials:** the job reads `VONAGE_CREDS_JSON` — the whole `vonage-master-api-keys` secret value, injected as one env var by Cloud Run — and parses out `VONAGE_API_KEY`/`VONAGE_API_SECRET`. `VONAGE_ACCOUNT_ID` defaults to the API key itself (confirmed against real data: the primary account's own `api_key` works as `account_id`) — set it explicitly to pull a subaccount instead.
+
+---
+
+## Part 5 — Deployment (`terraform/run.tf`)
+
+Same shape as `aws-bigquery-ingress`'s Part 5:
+
+- **Image**: built with `docker buildx build --platform linux/amd64 -t europe-west2-docker.pkg.dev/prj-ufonia-dev-lon-svc-01/ufonia/vonage-bigquery-import:<tag> --push .` from `cloud_run_job/`, pushed to the same centralized `ufonia` Artifact Registry repo the AWS pipeline uses.
+- **Cross-project image pull**: the billing project's Cloud Run service agent (`service-<PROJECT_NUMBER>@serverless-robot-prod.iam.gserviceaccount.com`) needs `roles/artifactregistry.reader` on the `ufonia` repo — `google_artifact_registry_repository_iam_member.vonage_importer_image_pull`.
+- **Cloud Run Job** `vonage-bigquery-import` (not a Service), execution identity = the `vonage_importer` SA, deployed via `google_cloud_run_v2_job.vonage_bigquery_import` with `image_tag` passed at apply time (`terraform apply -var="image_tag=<tag just pushed>"`). The Vonage credential is injected via `env { value_source { secret_key_ref { secret = ... } } } }` pointing at `vonage-master-api-keys` — never a plain-value env var.
+- **Cloud Scheduler** (`vonage-bigquery-import-daily`, `0 7 * * *` UTC — an hour after the AWS pipeline's 06:00 UTC run, to stagger them) hits the Cloud Run Jobs `run` API via a dedicated `vonage-scheduler-invoker` SA holding `roles/run.invoker` on just this job.
+- **Manual re-run**: `gcloud run jobs execute vonage-bigquery-import --region=europe-west2 --project=prj-ufonia-cmn-lon-billing-01 --wait`.
+- **Monitoring**: not yet set up — same gap as the AWS pipeline (alert on exit code ≠ 0, freshness check on `MAX(usage_date)`).
+
 ---
 
 ## Status
 
-- ✅ Part 1: API flow, auth, and SMS CSV schema confirmed from Vonage's docs.
-- ✅ Part 2: Terraform written (service account, Secret Manager containers, BigQuery dataset/table).
-- ✅ Part 3: `cloud_run_job/main.py` written, defensively designed for the unconfirmed Voice/WebSocket schema — **not yet run against a real report**, since no Vonage API credentials were available during the initial build.
-- ⬜ Not started: adding the real credentials to Secret Manager, deploying the Cloud Run Job + Scheduler (mirroring `aws-bigquery-ingress`'s Part 5), pulling a real Voice/WebSocket sample and correcting the schema/dedup-key against it, wiring into the `billing-dashboard` skill.
+- ✅ Part 1: API flow, auth, and full CSV schema (SMS, VOICE-CALL, VOICE-TTS, WEBSOCKET-CALL) confirmed against **real production data** (2026-08-18), using the existing `vonage-creds-telephony-service` secret in `prj-ufonia-prd-lon-svc-01` (same primary-account API key/secret the telephony service already uses — Vonage support confirmed a secondary key is the wrong tool for this).
+- ✅ Part 2: Terraform written and applied (service account, Secret Manager containers, BigQuery dataset/table).
+- ✅ Part 3: `cloud_run_job/main.py` written, **run successfully end-to-end** against real data and the live `vonage_cost_and_usage` table. Fixed two real bugs found during that test run:
+  - `VOICE-TTS` and `WEBSOCKET-CALL` reject the `direction` parameter (422) — the job previously looped `direction` for every product, so it silently loaded **zero rows** for these two. Fixed: `PRODUCTS_WITH_DIRECTION = {"SMS", "VOICE-CALL"}` gates which products get the direction loop; the other two are requested once with no `direction`.
+  - `DATE_FIELDS` had a nonexistent `"date_start_time"` field name; the real column is `date_start` (VOICE-CALL/WEBSOCKET-CALL) or `creation_date` (VOICE-TTS). Fixed.
+  - `RECORD_ID_FIELDS` needed no change — `message_id` (SMS), `call_id` (VOICE-CALL/WEBSOCKET-CALL), and the `id` fallback (VOICE-TTS, which has no `message_id`/`call_id`) all resolved correctly as-is.
+  - Confirmed real row counts/totals landed correctly in BigQuery for a 2-day lookback (SMS, VOICE-CALL in/out, WEBSOCKET-CALL — VOICE-TTS returned 0 rows for that window, but the request itself succeeded).
+- ✅ **Credential sourcing decided and done (2026-08-18):** the two earlier unused `vonage-api-key`/`vonage-api-secret` secret containers were removed from Terraform; `vonage-master-api-keys` (a JSON blob, same shape as `vonage-creds-telephony-service`) was added and populated with the real primary-account credential. `main.py` now reads `VONAGE_CREDS_JSON` and parses out the key/secret. Verified with a real 1-day report request against the new secret.
+- ✅ **Backfilled the full year to date:** `vonage_cost_and_usage` has continuous coverage 2026-01-01 through 2026-08-17 (229/229 days) via manual one-off pulls (see memory `project-vonage-reports-api-plan` for the process — fetch credentials, throwaway venv, run `main.py`'s functions with a custom date range, clean up).
+- ✅ **Part 5 deployed (2026-08-18):** Cloud Run Job (`vonage-bigquery-import`) + daily Cloud Scheduler trigger (`vonage-bigquery-import-daily`, `0 7 * * *` UTC) via `terraform/run.tf`, same pattern as `aws-bigquery-ingress`'s Part 5 — image built with `docker buildx build --platform linux/amd64` and pushed to the shared `ufonia` Artifact Registry repo (`europe-west2-docker.pkg.dev/prj-ufonia-dev-lon-svc-01/ufonia/vonage-bigquery-import`), cross-project image-pull IAM for Cloud Run's service agent, a dedicated `vonage-scheduler-invoker` SA with `roles/run.invoker` on just this job. The job reads `VONAGE_CREDS_JSON` straight from the `vonage-master-api-keys` secret via `value_source.secret_key_ref` — no credential ever passed as a plain env var value in Terraform. **Manually executed and verified**: `gcloud run jobs execute --wait` completed successfully (exit 0), logs showed the expected per-product/direction row counts, and `vonage_cost_and_usage`'s total row count was unchanged after the run (1,397,326) — confirming the `MERGE` dedup re-updated the existing lookback window instead of duplicating it, running for real from the deployed container rather than the local script used for every prior pull. The 07:00 UTC daily schedule itself hasn't self-triggered yet (first natural firing is tomorrow).
+- ⬜ Not started: wiring into the `billing-dashboard` skill; freshness-check alerting (e.g. a scheduled query asserting `MAX(usage_date)` stays within the last ~2 days) — the same gap the AWS pipeline's own Part 5 still has, not yet built there either.
 
-**Before deploying:** get real Vonage credentials, add them to Secret Manager (Part 2, step 2), then run the Cloud Run Job manually once and inspect the `raw` column in BigQuery for the Voice/WebSocket rows — correct the field-name assumptions in `main.py` (`RECORD_ID_FIELDS`, `DATE_FIELDS`) based on what's actually there before turning on the daily schedule.
+**Before relying on the schedule unattended:** check the fuller Reports API product list (see Part 1) against a real invoice — currently only `SMS,VOICE-CALL,VOICE-TTS,WEBSOCKET-CALL` are pulled — and confirm tomorrow's 07:00 UTC run fires on its own.

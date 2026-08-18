@@ -13,12 +13,19 @@ resource "google_service_account" "vonage_importer" {
   description  = "Runs the Cloud Run Job that pulls Vonage Reports API data into BigQuery"
 }
 
-# Secret *containers* only — no version is created here, so no credential
-# material ever touches Terraform state or this repo. Add the real values
-# with `gcloud secrets versions add` once they exist (see README Part 2).
-resource "google_secret_manager_secret" "vonage_api_key" {
+# Secret *container* only — no version is created here, so no credential
+# material ever touches Terraform state or this repo. Populated by copying
+# the value already in `vonage-creds-telephony-service`
+# (prj-ufonia-prd-lon-svc-01) via `gcloud secrets versions add` — same
+# primary-account API key/secret the telephony service uses (Vonage support
+# confirmed a secondary key is the wrong tool for billing automation; see
+# README). JSON blob with VONAGE_API_KEY/VONAGE_API_SECRET/VONAGE_APP_ID/
+# VONAGE_PRIVATE_KEY/VONAGE_SIGNATURE_SECRET — this pipeline only needs the
+# first two, but keeps the same shape as the source secret rather than
+# re-splitting it.
+resource "google_secret_manager_secret" "vonage_master_api_keys" {
   project   = var.gcp_project_id
-  secret_id = "vonage-api-key"
+  secret_id = "vonage-master-api-keys"
 
   replication {
     user_managed {
@@ -31,31 +38,9 @@ resource "google_secret_manager_secret" "vonage_api_key" {
   depends_on = [google_project_service.secretmanager]
 }
 
-resource "google_secret_manager_secret" "vonage_api_secret" {
+resource "google_secret_manager_secret_iam_member" "vonage_importer_reads_master_api_keys" {
   project   = var.gcp_project_id
-  secret_id = "vonage-api-secret"
-
-  replication {
-    user_managed {
-      replicas {
-        location = var.gcp_region
-      }
-    }
-  }
-
-  depends_on = [google_project_service.secretmanager]
-}
-
-resource "google_secret_manager_secret_iam_member" "vonage_importer_reads_api_key" {
-  project   = var.gcp_project_id
-  secret_id = google_secret_manager_secret.vonage_api_key.secret_id
-  role      = "roles/secretmanager.secretAccessor"
-  member    = "serviceAccount:${google_service_account.vonage_importer.email}"
-}
-
-resource "google_secret_manager_secret_iam_member" "vonage_importer_reads_api_secret" {
-  project   = var.gcp_project_id
-  secret_id = google_secret_manager_secret.vonage_api_secret.secret_id
+  secret_id = google_secret_manager_secret.vonage_master_api_keys.secret_id
   role      = "roles/secretmanager.secretAccessor"
   member    = "serviceAccount:${google_service_account.vonage_importer.email}"
 }
