@@ -3,7 +3,7 @@
 BigQuery queries against the GCP billing export table
 `prj-ufonia-cmn-lon-billing-01.bq_dataset_billing_ufonia_invoice.gcp_billing_export_resource_v1_0194CA_24F6D5_7ED48D`,
 plus an AWS query against a CUR-to-BigQuery import table for the AWS side of
-spend (see `aws-bigquery-ingress/README.md` for that pipeline).
+spend (see `aws-bigquery-loader/README.md` for that pipeline).
 
 ## Queries
 
@@ -34,7 +34,7 @@ Cost by service for the current calendar month (Europe/London, matching
 `services.sql`'s window), for AWS account `453829601976`. Sourced from
 `bg_dataset_aws_cost_and_usage.aws_cost_and_usage`, a BigQuery table
 populated daily by a separate CUR-to-BigQuery import pipeline — see
-`aws-bigquery-ingress/README.md` for the full design (AWS Data Export → keyless OIDC
+`aws-bigquery-loader/README.md` for the full design (AWS Data Export → keyless OIDC
 federation → Cloud Run Job → BigQuery). Excludes `line_item_type = 'Tax'`,
 to match the GCP queries' exclusion of tax rows. Sorted by `Cost DESC` and
 capped at `LIMIT 10`, same shape as `services.sql`.

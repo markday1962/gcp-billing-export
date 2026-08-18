@@ -1,5 +1,5 @@
 -- AWS cost by service for the current calendar month, from the
--- CUR-to-BigQuery import pipeline (see aws-bigquery-ingress/README.md). Excludes
+-- CUR-to-BigQuery import pipeline (see aws-bigquery-loader/README.md). Excludes
 -- line_item_type = 'Tax', to match the GCP queries' exclusion of
 -- tax/adjustment rows. Mirrors bigquery-sql/services.sql's shape/window so the
 -- two can sit side by side in the billing dashboard.
