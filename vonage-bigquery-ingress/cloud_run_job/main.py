@@ -28,9 +28,17 @@ GCP_PROJECT_ID = os.environ.get("GCP_PROJECT_ID", "prj-ufonia-cmn-lon-billing-01
 BQ_DATASET = os.environ.get("BQ_DATASET", "bq_dataset_vonage_cost_and_usage")
 BQ_TABLE = os.environ.get("BQ_TABLE", "vonage_cost_and_usage")
 
-VONAGE_ACCOUNT_ID = os.environ["VONAGE_ACCOUNT_ID"]
-VONAGE_API_KEY = os.environ["VONAGE_API_KEY"]
-VONAGE_API_SECRET = os.environ["VONAGE_API_SECRET"]
+# The Cloud Run Job mounts the `vonage-master-api-keys` secret (the same
+# primary-account credential JSON as the telephony service's
+# `vonage-creds-telephony-service` — VONAGE_API_KEY/VONAGE_API_SECRET/
+# VONAGE_APP_ID/VONAGE_PRIVATE_KEY/VONAGE_SIGNATURE_SECRET) as one env var
+# holding the raw secret value. Only the key/secret pair is used here.
+_vonage_creds = json.loads(os.environ["VONAGE_CREDS_JSON"])
+VONAGE_API_KEY = _vonage_creds["VONAGE_API_KEY"]
+VONAGE_API_SECRET = _vonage_creds["VONAGE_API_SECRET"]
+# api_key doubles as account_id for the primary account (confirmed against
+# real data) — override via VONAGE_ACCOUNT_ID for a subaccount pull.
+VONAGE_ACCOUNT_ID = os.environ.get("VONAGE_ACCOUNT_ID", VONAGE_API_KEY)
 VONAGE_API_BASE = os.environ.get("VONAGE_API_BASE", "https://api.nexmo.com")
 
 # Reports API takes one product per request (see ../README.md Part 1 for the
@@ -38,6 +46,11 @@ VONAGE_API_BASE = os.environ.get("VONAGE_API_BASE", "https://api.nexmo.com")
 # other products (VERIFY-API, NUMBER-INSIGHT, MESSAGES, ...).
 VONAGE_PRODUCTS = os.environ.get("VONAGE_PRODUCTS", "SMS,VOICE-CALL,VOICE-TTS,WEBSOCKET-CALL").split(",")
 DIRECTIONS = ["inbound", "outbound"]
+
+# Confirmed against real production data (2026-08-18): SMS and VOICE-CALL
+# accept/require `direction`; VOICE-TTS and WEBSOCKET-CALL reject it (422
+# "Invalid format") and must be requested once with no direction at all.
+PRODUCTS_WITH_DIRECTION = {"SMS", "VOICE-CALL"}
 
 # How many days back to request each run — covers same-day restatement
 # without re-requesting the world every time.
@@ -55,14 +68,15 @@ PRODUCT_CATEGORY = {
 }
 
 # Tried in order against each raw row to find a stable per-record ID.
-# Confirmed present for SMS ("message_id"). Voice/WebSocket field names are
-# unverified — see README.
+# Confirmed against real data: "message_id" for SMS, "call_id" for
+# VOICE-CALL/WEBSOCKET-CALL, "id" for VOICE-TTS (no call_id/message_id).
 RECORD_ID_FIELDS = ["message_id", "call_id", "uuid", "id"]
 
 # Tried in order to find the row's usage date. Confirmed present for SMS
-# ("date_received"). Falls back to the request's own date_start if none of
-# these are present in the row.
-DATE_FIELDS = ["date_received", "date_start_time", "date"]
+# ("date_received"), VOICE-CALL/WEBSOCKET-CALL ("date_start"), and
+# VOICE-TTS ("creation_date"). Falls back to the request's own date_start
+# if none of these are present in the row.
+DATE_FIELDS = ["date_received", "date_start", "creation_date"]
 
 
 def auth():
@@ -70,16 +84,18 @@ def auth():
 
 
 def request_report(product, direction, date_start, date_end):
+    payload = {
+        "product": product,
+        "account_id": VONAGE_ACCOUNT_ID,
+        "date_start": date_start,
+        "date_end": date_end,
+    }
+    if direction is not None:
+        payload["direction"] = direction
     resp = requests.post(
         f"{VONAGE_API_BASE}/v2/reports",
         auth=auth(),
-        json={
-            "product": product,
-            "account_id": VONAGE_ACCOUNT_ID,
-            "direction": direction,
-            "date_start": date_start,
-            "date_end": date_end,
-        },
+        json=payload,
         timeout=30,
     )
     resp.raise_for_status()
@@ -219,7 +235,9 @@ def run():
     staging_table_id = f"{GCP_PROJECT_ID}.{BQ_DATASET}.{BQ_TABLE}_staging"
 
     for product in VONAGE_PRODUCTS:
-        for direction in DIRECTIONS:
+        directions = DIRECTIONS if product in PRODUCTS_WITH_DIRECTION else [None]
+        for direction in directions:
+            label = f"{product}/{direction or 'n/a'}"
             requested = request_report(product, direction, date_start, date_end)
             report = poll_report(requested["request_id"])
             if report is None:
@@ -227,13 +245,13 @@ def run():
 
             raw_rows = download_report_rows(report)
             if not raw_rows:
-                print(f"[{product}/{direction}] 0 rows, skipping load")
+                print(f"[{label}] 0 rows, skipping load")
                 continue
 
             rows = [transform_row(r, product, direction, date_start) for r in raw_rows]
             loaded = load_staging_table(bq, staging_table_id, rows)
             merge_into_target(bq, target_table_id, staging_table_id)
-            print(f"[{product}/{direction}] {loaded} rows staged and merged into {target_table_id}")
+            print(f"[{label}] {loaded} rows staged and merged into {target_table_id}")
 
 
 if __name__ == "__main__":

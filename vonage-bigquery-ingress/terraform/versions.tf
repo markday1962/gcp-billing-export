@@ -12,3 +12,10 @@ terraform {
 provider "google" {
   project = var.gcp_project_id
 }
+
+# The centralized Artifact Registry repo (`ufonia`) lives in a different
+# project than this pipeline's own resources.
+provider "google" {
+  alias   = "shared_services"
+  project = var.image_repo_project
+}
