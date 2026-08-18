@@ -5,7 +5,7 @@ per-service monthly summary) into bq_dataset_billing_ufonia_invoice
 Why this exists: the live BigQuery billing export only has data from
 2026-08-01 onward (Google doesn't backfill historical usage into it), so
 prior months have to come from these manually-downloaded invoice CSVs
-instead - same pattern vonage-bigquery-ingress used before its Reports API
+instead - same pattern vonage-bigquery-loader used before its Reports API
 pipeline existed.
 
 Usage: python3 load_invoice.py "Ufonia GCP Invoice Account_Reports, 2026-07-01 — 2026-07-31.csv"

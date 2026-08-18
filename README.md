@@ -59,7 +59,7 @@ This replaced an earlier AWS Cost Explorer script (`aws/services.sh`,
 account `102369858221`) that was removed once this pipeline reached
 parity for the dashboard's needs.
 
-### `vonage-bigquery-ingress/`
+### `vonage-bigquery-loader/`
 
 Manually-dropped Vonage/Nexmo invoice CSVs (traffic reports), not a live
 query — add a new invoice file here when one arrives. Each file has one row

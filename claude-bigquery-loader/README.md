@@ -67,7 +67,7 @@ Both endpoints: `has_more`/`next_page` pagination. Data freshness ~5 min; poll a
 
 ## Part 2 — GCP side: service account, Secret Manager, BigQuery target
 
-Same shape as `vonage-bigquery-ingress/`: service account `claude-importer@<GCP_PROJECT_ID>.iam.gserviceaccount.com`, a Secret Manager **container only** (`claude-admin-api-key` — no version created by Terraform, add the real key yourself):
+Same shape as `vonage-bigquery-loader/`: service account `claude-importer@<GCP_PROJECT_ID>.iam.gserviceaccount.com`, a Secret Manager **container only** (`claude-admin-api-key` — no version created by Terraform, add the real key yourself):
 
 ```sh
 echo -n "<ANTHROPIC_ADMIN_KEY>" | gcloud secrets versions add claude-admin-api-key --data-file=- --project=<GCP_PROJECT_ID>
