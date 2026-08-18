@@ -13,7 +13,7 @@ Expected filename shape: `Ufonia GCP Invoice Account_Reports, YYYY-MM-DD — YYY
 One row per service for the month, **not** line-item/resource detail:
 `Service description, Service ID, List cost, Negotiated savings, Savings programmes, Other savings, Unrounded subtotal, Subtotal, Percent change vs previous period` — plus a `Subtotal`/`Tax`/`Filtered total` footer with no Service ID (the loader skips those rows; the per-service `subtotal` column already sums to the same total).
 
-This is coarser than the live export (no project, no SKU, no resource, no usage amount) — it's enough to know what a past month cost per service, not enough to reproduce `platformcogs.sql`/`apicogs.sql`-style per-project breakdowns for that month.
+This is coarser than the live export (no project, no SKU, no resource, no usage amount) — it's enough to know what a past month cost per service, not enough to reproduce `gcp_platform_cogs.sql`/`gcp_api_cogs.sql`-style per-project breakdowns for that month.
 
 ## Loading into BigQuery
 

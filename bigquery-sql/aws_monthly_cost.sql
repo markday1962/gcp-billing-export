@@ -2,7 +2,7 @@
 -- the CUR-to-BigQuery import pipeline (see aws-bigquery-loader/README.md). Excludes
 -- line_item_type = 'Tax', to match the GCP queries' exclusion of
 -- tax/adjustment rows. Same CURRENT_DATE-relative pattern as
--- bigquery-sql/services.sql, shifted back one month — for the current calendar
+-- bigquery-sql/gcp_all_services.sql, shifted back one month — for the current calendar
 -- month instead, see bigquery-sql/aws_services.sql.
 --
 -- NOTE: as of 2026-08-17 the table only contains data from 2026-08-01
