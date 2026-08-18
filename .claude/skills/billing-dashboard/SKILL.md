@@ -6,7 +6,7 @@ description: >-
   query (vonage_services.sql), publishing a single combined dashboard
   artifact. Use when the user asks to run the billing queries, refresh the
   cost dashboard, or see
-  services/apicogs/platformcogs/AWS/Vonage costs "together" or "in one
+  gcp_all_services/gcp_api_cogs/gcp_platform_cogs/AWS/Vonage costs "together" or "in one
   place".
 ---
 
@@ -102,7 +102,7 @@ one combined Artifact, instead of separate ones.
    on future runs.
 
 4. **Build one HTML page with a stacked section per source**, in this
-   order: services, platformcogs, apicogs, AWS costs, Vonage costs. Reuse
+   order: gcp_all_services, gcp_platform_cogs, gcp_api_cogs, AWS costs, Vonage costs. Reuse
    the shared visual language from prior dashboards in this project:
    card-on-page layout, the light/dark CSS custom-property block from
    `references/palette.md`, same fonts/spacing. Each section gets its own
