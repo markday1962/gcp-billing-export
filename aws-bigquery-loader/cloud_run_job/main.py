@@ -3,9 +3,17 @@
 Flow: mint a Google ID token for this job's service account -> exchange it
 for short-lived AWS credentials via AssumeRoleWithWebIdentity -> read the
 CUR "current" manifest for each billing period being watched -> download and
-parse the referenced CSV.gz file(s) -> load into a staging table -> MERGE
-into the target table, keyed on (usage_date, line_item_id) so a restated day
-cleanly replaces the prior version instead of duplicating rows.
+parse the referenced CSV.gz file(s) -> load into a staging table -> replace
+every usage_date present in the staging batch (DELETE + INSERT) so a restated
+day cleanly gets its rows replaced instead of duplicating them.
+
+NOTE: this used to be a MERGE keyed on (usage_date, line_item_id), on the
+assumption that AWS's identity/LineItemId is stable across CUR re-exports of
+the same charge. Confirmed 2026-08-28 that assumption is false for at least
+some line items (AWS reissues the ID on refresh), which made the MERGE's ON
+clause fail to match and silently accumulate duplicate rows on every re-run
+instead of replacing them — inflating month-to-date totals. A per-usage_date
+partition replace sidesteps the unstable ID entirely.
 
 See ../README.md for the full design.
 """
@@ -176,20 +184,14 @@ def load_staging_table(bq, staging_table_id, rows):
     return job.output_rows
 
 
-def merge_into_target(bq, target_table_id, staging_table_id):
-    update_clause = ",\n        ".join(
-        f"{f} = S.{f}" for f in FIELD_NAMES if f not in ("usage_date", "line_item_id")
-    )
+def replace_into_target(bq, target_table_id, staging_table_id):
     insert_cols = ", ".join(FIELD_NAMES)
-    insert_vals = ", ".join(f"S.{f}" for f in FIELD_NAMES)
     sql = f"""
-    MERGE `{target_table_id}` T
-    USING `{staging_table_id}` S
-    ON T.usage_date = S.usage_date AND T.line_item_id = S.line_item_id
-    WHEN MATCHED THEN UPDATE SET
-        {update_clause}
-    WHEN NOT MATCHED THEN INSERT ({insert_cols})
-    VALUES ({insert_vals})
+    DELETE FROM `{target_table_id}`
+    WHERE usage_date IN (SELECT DISTINCT usage_date FROM `{staging_table_id}`);
+
+    INSERT INTO `{target_table_id}` ({insert_cols})
+    SELECT {insert_cols} FROM `{staging_table_id}`;
     """
     bq.query(sql).result()
 
@@ -223,10 +225,10 @@ def run():
             continue
 
         loaded = load_staging_table(bq, staging_table_id, rows)
-        merge_into_target(bq, target_table_id, staging_table_id)
+        replace_into_target(bq, target_table_id, staging_table_id)
         print(
             f"[{period}] assembly {manifest.get('assemblyId')}: "
-            f"{loaded} rows staged and merged into {target_table_id}"
+            f"{loaded} rows staged and replaced into {target_table_id}"
         )
 
 
