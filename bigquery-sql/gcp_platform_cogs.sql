@@ -75,7 +75,6 @@ WHERE
     'CCD8-9BF1-090E',
     'E505-1604-58F8',
     'EE82-7A5E-871C',
-    '2062-016F-44A2',
     'C7E2-9256-1C43') )
 SELECT
 service.description AS `Service Description`,
