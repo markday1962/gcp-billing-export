@@ -19,7 +19,7 @@ savings, Subtotal. Sorted by `Subtotal DESC` and capped at `LIMIT 10` — top
 ### `bigquery-sql/gcp_platform_cogs.sql`
 
 Same shape as `gcp_all_services.sql`, scoped to the wider set of projects/services
-that make up platform (non-API) COGS — 8 projects, 25 service IDs. Also
+that make up platform (non-API) COGS — 8 projects, 24 service IDs. Also
 sorted `Subtotal DESC` and capped at `LIMIT 10`.
 
 ### `bigquery-sql/gcp_api_cogs.sql`
@@ -28,7 +28,7 @@ Same shape as `gcp_all_services.sql`, scoped to specific projects and services (
 for API-based services):
 
 - Projects: `prj-ufonia-prd-lon-svc-01` (870453169286), `prj-ufonia-prd-lon-host-01` (1025855247143)
-- Services: `63DE-82AB-F564` (Cloud Speech API), `02DA-B362-D983` (unresolved — see Known issues)
+- Services: `63DE-82AB-F564` (Cloud Speech API)
 
 ### `bigquery-sql/aws_services.sql`
 
@@ -127,17 +127,23 @@ Additional fixes specific to `gcp_api_cogs.sql` and `gcp_platform_cogs.sql`:
 
 ## Known issues
 
-- **`gcp_platform_cogs.sql` previously had 4 `service.id` filter values that
-  didn't match any service in this billing export** — `9B82-7513-9D1C`,
-  `C5E6-A27F-6A44`, `FBF2-FC68-171A`, `1DB1-3CD3-35A3`. Checked against the
-  full distinct list of 39 `service.id` values present in the export table
-  (with and without the `services/` prefix) — no match. Since they matched
-  zero rows, removing them from the filter has no effect on totals; they
-  were dropped to keep the query honest about what it's actually scoping.
-  If platform COGS coverage for those services is needed, the correct IDs
-  still need to be found and re-added.
-- **`gcp_api_cogs.sql`: `02DA-B362-D983` does not match any service in this
-  billing export.** Same check as above — no match. Either this service has
-  never had usage on this billing account, or it's the wrong ID for whatever
-  second API `gcp_api_cogs.sql` was meant to cover. Needs the correct service ID
-  before this query's totals can be considered complete.
+- **`gcp_platform_cogs.sql` previously had 5 `service.id` filter values that
+  never matched a row in this query's project/date scope** — `9B82-7513-9D1C`,
+  `C5E6-A27F-6A44`, `FBF2-FC68-171A`, `1DB1-3CD3-35A3` (removed 2026-08-14,
+  none of the four match any service anywhere in the export), and
+  `2062-016F-44A2` (removed 2026-08-28 — this one *is* a real, valid service
+  ID (`Support`) elsewhere in the export, it just has never had any usage
+  against the 8 projects in this query's scope). Since all five matched zero
+  rows in the query's own output, removing them from the filter has no effect
+  on totals; they were dropped to keep the query honest about what it's
+  actually scoping. If platform COGS coverage for any of them is needed, the
+  correct ID (for the first four) or a matching project (for `Support`)
+  still needs to be found and re-added.
+- **`gcp_api_cogs.sql` previously had `02DA-B362-D983` in its filter, removed
+  2026-08-28** — does not match any service anywhere in this billing export
+  (checked against the full distinct `service.id` list, with and without the
+  `services/` prefix — no match). Either this service has never had usage on
+  this billing account, or it was the wrong ID for whatever second API
+  `gcp_api_cogs.sql` was meant to cover. Needs the correct service ID adding
+  back before this query's totals can be considered complete for "API COGS"
+  more broadly than just Cloud Speech API.

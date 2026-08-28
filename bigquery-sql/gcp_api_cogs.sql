@@ -40,8 +40,7 @@ WHERE
       '870453169286'))
   AND usage_start_time >= TIMESTAMP(DATE_TRUNC(CURRENT_DATE('Europe/London'), MONTH), 'Europe/London')
   AND usage_start_time < TIMESTAMP(DATE_ADD(DATE_TRUNC(CURRENT_DATE('Europe/London'), MONTH), INTERVAL 1 MONTH), 'Europe/London')
-  AND service.id IN ('63DE-82AB-F564',
-    '02DA-B362-D983') )
+  AND service.id IN ('63DE-82AB-F564') )
 SELECT
 service.description AS `Service Description`,
 SUM(CAST(cost_at_list AS NUMERIC)) - SUM(CAST(spend_cud_fee_cost AS NUMERIC)) AS `Cost`,
