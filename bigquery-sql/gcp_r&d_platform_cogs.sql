@@ -34,10 +34,10 @@ FROM
 WHERE
   cost_type != 'tax'
   AND cost_type != 'adjustment'
-  AND (project.id IN ('1025855247143',
-      '870453169286')
-    OR project.number IN ('1025855247143',
-      '870453169286'))
+  AND (project.id IN ('616882422931',
+      '728785948359')
+    OR project.number IN ('616882422931',
+      '728785948359'))
   AND usage_start_time >= TIMESTAMP(DATE_TRUNC(CURRENT_DATE('Europe/London'), MONTH), 'Europe/London')
   AND usage_start_time < TIMESTAMP(DATE_ADD(DATE_TRUNC(CURRENT_DATE('Europe/London'), MONTH), INTERVAL 1 MONTH), 'Europe/London')
   AND service.id IN ('F17B-412E-CB64',

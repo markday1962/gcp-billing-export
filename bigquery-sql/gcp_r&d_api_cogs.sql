@@ -34,36 +34,13 @@ FROM
 WHERE
   cost_type != 'tax'
   AND cost_type != 'adjustment'
-  AND (project.id IN ('1025855247143',
-      '870453169286')
-    OR project.number IN ('1025855247143',
-      '870453169286'))
+  AND (project.id IN ('616882422931',
+      '728785948359')
+    OR project.number IN ('616882422931',
+      '728785948359'))
   AND usage_start_time >= TIMESTAMP(DATE_TRUNC(CURRENT_DATE('Europe/London'), MONTH), 'Europe/London')
   AND usage_start_time < TIMESTAMP(DATE_ADD(DATE_TRUNC(CURRENT_DATE('Europe/London'), MONTH), INTERVAL 1 MONTH), 'Europe/London')
-  AND service.id IN ('F17B-412E-CB64',
-    '149C-F9EC-3994',
-    '24E6-581D-38E5',
-    'DCC9-8DB9-673F',
-    '7766-403C-6D6E',
-    'D64E-AF12-1813',
-    'FA26-5236-B8B5',
-    'D870-408D-92A6',
-    '7C52-19D8-71EE',
-    '5490-F7B7-8DF6',
-    '5AF5-2C11-D467',
-    '58CD-E7C3-72CA',
-    'A1E8-BE35-7EBC',
-    '152E-C115-5142',
-    '9662-B51E-5089',
-    '95FF-2EF5-5EA1',
-    '6F81-5844-456A',
-    '82AF-DE7A-51D0',
-    '7EC6-CE53-9E39',
-    'DC5D-D207-FD2F',
-    'CCD8-9BF1-090E',
-    'E505-1604-58F8',
-    'EE82-7A5E-871C',
-    'C7E2-9256-1C43') )
+  AND service.id IN ('63DE-82AB-F564') )
 SELECT
 service.description AS `Service Description`,
 SUM(CAST(cost_at_list AS NUMERIC)) - SUM(CAST(spend_cud_fee_cost AS NUMERIC)) AS `Cost`,
@@ -77,4 +54,3 @@ GROUP BY
 service.description
 ORDER BY
 Subtotal DESC
-LIMIT 10
