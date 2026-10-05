@@ -28,31 +28,6 @@ month, with columns: Cost, Negotiated savings, Savings programmes, Other
 savings, Subtotal. Sorted by `Subtotal DESC` and capped at `LIMIT 10` — top
 10 services by spend, not the full list.
 
-### `bigquery-sql/gcp_all_production.sql`
-
-Same shape and same 24 platform service IDs as `gcp_uk_platform_cogs.sql`,
-scoped to all 8 production projects: `prj-ufonia-prd-lon-svc-01`,
-`prj-ufonia-prd-lon-svc-02`, `prj-ufonia-prd-lon-host-01`,
-`prj-ufonia-prd-lon-orbit-01`, `prj-ufonia-prd-lon-ds-01`,
-`prj-ufonia-prd-iowa-svc-01`, `prj-ufonia-prd-iowa-svc-02`,
-`prj-ufonia-prd-iowa-host-01`. A superset of the UK and US Platform COGS
-queries. Added 2026-10-05 from a Billing console export; the console version
-also listed the 5 IDs removed from Platform COGS in August, which had no
-usage in these projects. September 2026: Cost $17,026.39 (23 services).
-Sorted `Subtotal DESC` and capped at `LIMIT 10`.
-
-### `bigquery-sql/gcp_all_development.sql`
-
-Same shape as `gcp_all_services.sql` (every service, no `service.id`
-filter), scoped to the 4 development projects: `prj-ufonia-dev-lon-svc-01`,
-`prj-ufonia-dev-host-01`, `prj-ufonia-dev-iowa-svc-02` ("Dora Advanced
-Development") and `prj-ufonia-dev-iowa-host-01`. Includes everything the UK
-R&D COGS queries cover. Note the asymmetry with `gcp_all_production.sql`,
-which is limited to the 24 platform service IDs. Added 2026-10-05 from a
-Billing console export (whose credit lists were already filled in).
-September 2026: Cost $8,139.41 (39 services). Sorted `Subtotal DESC` and
-capped at `LIMIT 10`.
-
 ### `bigquery-sql/gcp_uk_platform_cogs.sql`
 
 Renamed from `gcp_platform_cogs.sql` on 2026-10-05, to distinguish it from
