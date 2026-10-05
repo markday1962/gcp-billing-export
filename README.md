@@ -16,12 +16,15 @@ month, with columns: Cost, Negotiated savings, Savings programmes, Other
 savings, Subtotal. Sorted by `Subtotal DESC` and capped at `LIMIT 10` — top
 10 services by spend, not the full list.
 
-### `bigquery-sql/gcp_platform_cogs.sql`
+### `bigquery-sql/gcp_uk_platform_cogs.sql`
+
+Renamed from `gcp_platform_cogs.sql` on 2026-10-05, to distinguish it from
+`gcp_us_platform_cogs.sql`; shown as "UK ..." in the billing dashboard.
 
 Same shape as `gcp_all_services.sql`, scoped to the production projects and
 24 platform (non-API) service IDs that make up platform COGS:
 
-- Projects: `prj-ufonia-prd-lon-svc-01` (870453169286), `prj-ufonia-prd-lon-host-01` (1025855247143) — the same two production projects as `gcp_api_cogs.sql`, just with a broader service list.
+- Projects: `prj-ufonia-prd-lon-svc-01` (870453169286), `prj-ufonia-prd-lon-host-01` (1025855247143) — the same two production projects as `gcp_uk_api_cogs.sql`, just with a broader service list.
 
 Sorted `Subtotal DESC` and capped at `LIMIT 10`.
 
@@ -36,28 +39,28 @@ preserved as `bigquery-sql/gcp_r&d_platform_cogs.sql` — see below.
 
 ### `bigquery-sql/gcp_us_platform_cogs.sql`
 
-Same shape and same 24 service IDs as `gcp_platform_cogs.sql`, scoped to the
+Same shape and same 24 service IDs as `gcp_uk_platform_cogs.sql`, scoped to the
 US production project:
 
 - Project: `prj-ufonia-prd-iowa-svc-02` (736494139432, "Dora Advanced Production").
 
 Added 2026-10-05 from a Billing console export, cleaned up the same way as
 the other COGS queries (see below). The console version also listed the 5
-IDs removed from `gcp_platform_cogs.sql` in August (`9B82-7513-9D1C`,
+IDs removed from `gcp_uk_platform_cogs.sql` in August (`9B82-7513-9D1C`,
 `C5E6-A27F-6A44`, `FBF2-FC68-171A`, `2062-016F-44A2`, `1DB1-3CD3-35A3`); none
 had usage on this project, so they were dropped to keep the two lists the
-same. Disjoint project scope from `gcp_platform_cogs.sql`, so never additive
+same. Disjoint project scope from `gcp_uk_platform_cogs.sql`, so never additive
 with it. For September 2026, 18 of the 24 IDs matched at least one row.
 Sorted `Subtotal DESC` and capped at `LIMIT 10`.
 
 ### `` bigquery-sql/gcp_r&d_platform_cogs.sql ``
 
-Same shape and same 24 service IDs as `gcp_platform_cogs.sql`, scoped to 2
+Same shape and same 24 service IDs as `gcp_uk_platform_cogs.sql`, scoped to 2
 dev projects:
 
 - Projects: `prj-ufonia-dev-host-01` (616882422931), `prj-ufonia-dev-lon-svc-01` (728785948359).
 
-Disjoint project scope from `gcp_platform_cogs.sql` (2 production projects),
+Disjoint project scope from `gcp_uk_platform_cogs.sql` (2 production projects),
 not a subset/superset of it, so its total is never additive with the
 Platform COGS row. "R&D" is an informal label for this project pair, not an
 official GCP/console term. Checked all 24 service IDs against this scope for
@@ -65,7 +68,7 @@ August 2026: all 24 matched at least one row — re-check this each run rather
 than assuming it stays true. Sorted `Subtotal DESC` and capped at `LIMIT 10`.
 
 **Narrowed 2026-09-01:** originally created as an unmodified copy of
-`gcp_platform_cogs.sql` from just before that file's own project-scope
+`gcp_uk_platform_cogs.sql` from just before that file's own project-scope
 correction, so it briefly covered all 8 of the old dev/staging/trial
 projects (`prj-ufonia-dev-iowa-svc-02`, `prj-ufonia-dev-host-01`,
 `prj-ufonia-dev-iowa-host-01`, `prj-ufonia-dev-lon-svc-01`,
@@ -73,7 +76,10 @@ projects (`prj-ufonia-dev-iowa-svc-02`, `prj-ufonia-dev-host-01`,
 `prj-ufonia-fls-trial-lon`, `prj-ufonia-prd-lon-svc-02`). The user then
 narrowed it, same day, to just the 2 dev projects above.
 
-### `bigquery-sql/gcp_api_cogs.sql`
+### `bigquery-sql/gcp_uk_api_cogs.sql`
+
+Renamed from `gcp_api_cogs.sql` on 2026-10-05, to distinguish it from
+`gcp_us_platform_cogs.sql`; shown as "UK ..." in the billing dashboard.
 
 Same shape as `gcp_all_services.sql`, scoped to specific projects and services (COGS
 for API-based services):
@@ -84,17 +90,17 @@ for API-based services):
 ### `` bigquery-sql/gcp_r&d_api_cogs.sql ``
 
 Same shape and same single service ID (`63DE-82AB-F564`, Cloud Speech API) as
-`gcp_api_cogs.sql`, but scoped to the same 2 dev projects as
+`gcp_uk_api_cogs.sql`, but scoped to the same 2 dev projects as
 `` gcp_r&d_platform_cogs.sql `` instead of the 2 production projects:
 
 - Projects: `prj-ufonia-dev-host-01` (616882422931), `prj-ufonia-dev-lon-svc-01` (728785948359)
 
-A copy of `gcp_api_cogs.sql` with only the project filter changed, added
+A copy of `gcp_uk_api_cogs.sql` with only the project filter changed, added
 2026-09-01. For August 2026 this returns a single row, Cloud Speech API at
 **$0.0072** — de minimis dev usage, not zero, so it still renders (a stat
-tile, not "no matching rows"). Disjoint project scope from `gcp_api_cogs.sql`
+tile, not "no matching rows"). Disjoint project scope from `gcp_uk_api_cogs.sql`
 (2 production projects), so never additive with it — same relationship as
-`` gcp_r&d_platform_cogs.sql `` has with `gcp_platform_cogs.sql`.
+`` gcp_r&d_platform_cogs.sql `` has with `gcp_uk_platform_cogs.sql`.
 
 ### `bigquery-sql/aws_services.sql`
 
@@ -175,8 +181,8 @@ date range. Cleanup applied to all three:
   bounds (e.g. `'2026-08-01T00:00:00 US/Pacific'`) with a rolling
   current-calendar-month window based on `CURRENT_DATE('Europe/London')`, so
   the query always reflects the current month without manual edits. All
-  three queries currently use the current month. `gcp_api_cogs.sql` and
-  `gcp_platform_cogs.sql` are intended to run a month in arrears (previous
+  three queries currently use the current month. `gcp_uk_api_cogs.sql` and
+  `gcp_uk_platform_cogs.sql` are intended to run a month in arrears (previous
   calendar month) once a full prior month's data exists in the export
   table — right now the table only contains data from 2026-08-01 onward, so
   a previous-month window returns nothing. To switch them to previous-month,
@@ -194,7 +200,7 @@ date range. Cleanup applied to all three:
 - **Removed the trailing `- 0`** in the `Subtotal` calculation (harmless but
   vestigial console boilerplate).
 
-Additional fixes specific to `gcp_api_cogs.sql` and `gcp_platform_cogs.sql`:
+Additional fixes specific to `gcp_uk_api_cogs.sql` and `gcp_uk_platform_cogs.sql`:
 
 - **Filled in the credit-type lists.** `cud_credits` and `other_savings` were
   computed from `c.type IN ('')` (an empty placeholder, always `0`). Replaced
@@ -205,13 +211,13 @@ Additional fixes specific to `gcp_api_cogs.sql` and `gcp_platform_cogs.sql`:
   `service.id IN ('services/63DE-82AB-F564', ...)`, but the export table
   stores `service.id` as a bare code (e.g. `63DE-82AB-F564`), not prefixed
   with `services/`. The prefix meant the filter never matched anything and
-  the query silently returned zero (`gcp_api_cogs.sql`) or far fewer
-  (`gcp_platform_cogs.sql`) rows than it should. Removed the `services/` prefix
+  the query silently returned zero (`gcp_uk_api_cogs.sql`) or far fewer
+  (`gcp_uk_platform_cogs.sql`) rows than it should. Removed the `services/` prefix
   from every ID in both queries.
 
 ## Known issues
 
-- **`gcp_platform_cogs.sql`'s project scope changed 2026-09-01** (see above).
+- **`gcp_uk_platform_cogs.sql`'s project scope changed 2026-09-01** (see above).
   Re-checked all 24 current service IDs against the new 2-project production
   scope for August 2026: 23 of 24 matched at least one row. The one
   exception, `82AF-DE7A-51D0` (`Container Registry Vulnerability Scanning`),
@@ -219,7 +225,7 @@ Additional fixes specific to `gcp_api_cogs.sql` and `gcp_platform_cogs.sql`:
   two production projects last month — left in the filter since it's a valid
   ID that could plausibly see usage in a future month, unlike the
   never-matches-anywhere IDs noted below.
-- **`gcp_platform_cogs.sql` previously had 5 `service.id` filter values that
+- **`gcp_uk_platform_cogs.sql` previously had 5 `service.id` filter values that
   never matched a row in this query's (then-current) project/date scope** —
   `9B82-7513-9D1C`, `C5E6-A27F-6A44`, `FBF2-FC68-171A`, `1DB1-3CD3-35A3`
   (removed 2026-08-14, none of the four match any service anywhere in the
@@ -229,11 +235,11 @@ Additional fixes specific to `gcp_api_cogs.sql` and `gcp_platform_cogs.sql`:
   matched zero rows in the query's own output at the time, removing them from
   the filter had no effect on totals; they were dropped to keep the query
   honest about what it was actually scoping.
-- **`gcp_api_cogs.sql` previously had `02DA-B362-D983` in its filter, removed
+- **`gcp_uk_api_cogs.sql` previously had `02DA-B362-D983` in its filter, removed
   2026-08-28** — does not match any service anywhere in this billing export
   (checked against the full distinct `service.id` list, with and without the
   `services/` prefix — no match). Either this service has never had usage on
   this billing account, or it was the wrong ID for whatever second API
-  `gcp_api_cogs.sql` was meant to cover. Needs the correct service ID adding
+  `gcp_uk_api_cogs.sql` was meant to cover. Needs the correct service ID adding
   back before this query's totals can be considered complete for "API COGS"
   more broadly than just Cloud Speech API.
