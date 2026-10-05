@@ -121,7 +121,7 @@ disappeared, they just moved into the table.
    raw console export, which carried the 5 IDs removed from Platform COGS in
    August (see README Known issues); those were dropped to match, with no
    effect on totals. Disjoint project scope, never additive with Platform
-   COGS. September 2026: 18 of 24 IDs matched, subtotal $1,993.22. Summary
+   COGS. September 2026: 18 of 24 IDs matched, subtotal USD 1,993.22. Summary
    table sub-row only, no chart card.
 
 1a-3. **`` gcp_uk_r&d_api_cogs.sql `` is the same relationship, one level down**:
@@ -130,7 +130,7 @@ disappeared, they just moved into the table.
    gcp_uk_r&d_platform_cogs.sql `` (`prj-ufonia-dev-host-01`,
    `prj-ufonia-dev-lon-svc-01`) instead of `gcp_uk_api_cogs.sql`'s 2 production
    projects. Added 2026-09-01. Typically returns exactly 1 row and a very
-   small figure (August 2026: $0.0072) — de minimis dev usage, not zero, so
+   small figure (August 2026: USD 0.0072) — de minimis dev usage, not zero, so
    render it as a stat tile (per step 3), not "no matching rows". Disjoint
    project scope from `gcp_uk_api_cogs.sql`, never additive with it. **No longer
    gets its own chart card (trimmed 2026-09-01)** — it's now an indented
@@ -190,6 +190,17 @@ disappeared, they just moved into the table.
    - `sub-row`: ↳ AWS Development (aws_services_by_environment.sql)
    - `sub-row`: ↳ AWS Production (aws_services_by_environment.sql)
    - Vonage all categories (vonage_services.sql)
+   - `sub-row`: ↳ Vonage SMS
+   - `sub-row`: ↳ Vonage Inbound Calls
+   - `sub-row`: ↳ Vonage Outbound Calls
+   - `sub-row`: ↳ Vonage WebSocket
+   - `sub-row`: ↳ Vonage Other
+
+   **Vonage sub-rows (user, 2026-10-05):** one per `vonage_services.sql`
+   category, in the order above (not sorted by cost), in EUR, savings columns
+   0. Like the AWS sub-rows they **sum exactly** to the Vonage parent row, so
+   the caption must group them with AWS as the decomposing case. The Vonage
+   bar chart card below stays as well.
 
    **Display labels (user, 2026-10-05):** the rows for `gcp_uk_platform_cogs.sql`
    and `gcp_uk_api_cogs.sql` are labelled "UK Platform COGS" and "UK API COGS"
@@ -281,7 +292,7 @@ disappeared, they just moved into the table.
      blank-`currency`-field
      quirk on SMS rows (see step 1b) — don't let the figure get compared
      directly against the GCP/AWS numbers without that caveat. If a
-     category (typically "Other"/VOICE-TTS) returns $0 or is missing
+     category (typically "Other"/VOICE-TTS) returns 0 or is missing
      entirely, that's expected — say so rather than treating it as an
      error.
    - `gcp_uk_api_cogs.sql` (summary row only): flag any `service.id` filter
@@ -311,7 +322,7 @@ disappeared, they just moved into the table.
      2026-09-01): same query/service as
      `gcp_uk_api_cogs.sql`,
      disjoint project scope (2 dev projects — see step 1a-3). Normally 1 row
-     with a very small figure (August 2026: $0.0072) — de minimis usage, not
+     with a very small figure (August 2026: USD 0.0072) — de minimis usage, not
      an error; a near-zero value isn't the same as "0 rows" (don't drop the
      row from the summary table because the figure looks negligible).
    - AWS All services + sub-rows (summary rows only): note that the top-line
