@@ -38,8 +38,8 @@ WHERE
       '870453169286')
     OR project.number IN ('1025855247143',
       '870453169286'))
-  AND usage_start_time >= TIMESTAMP(DATE_TRUNC(CURRENT_DATE('Europe/London'), MONTH), 'Europe/London')
-  AND usage_start_time < TIMESTAMP(DATE_ADD(DATE_TRUNC(CURRENT_DATE('Europe/London'), MONTH), INTERVAL 1 MONTH), 'Europe/London')
+  AND usage_start_time >= TIMESTAMP(DATE_TRUNC(CURRENT_DATE('US/Pacific'), MONTH), 'US/Pacific')
+  AND usage_start_time < TIMESTAMP(DATE_ADD(DATE_TRUNC(CURRENT_DATE('US/Pacific'), MONTH), INTERVAL 1 MONTH), 'US/Pacific')
   AND service.id IN ('63DE-82AB-F564') )
 SELECT
 service.description AS `Service Description`,

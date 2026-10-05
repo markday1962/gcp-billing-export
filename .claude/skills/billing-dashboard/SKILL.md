@@ -6,9 +6,10 @@ description: >-
   gcp_uk_r&d_api_cogs.sql), two AWS (aws_services.sql,
   aws_services_by_environment.sql), and Vonage (vonage_services.sql) —
   publishing a single combined dashboard artifact. All nine totals appear in
-  the summary table (GCP's four sub-sources and AWS's Production/Development
-  split as indented rows); Vonage is the only source that still gets its own
-  detail chart below it. Use when the user asks to run the billing queries, refresh the
+  the summary table (GCP's COGS rows, AWS's Production/Development split and
+  Vonage's categories as indented rows), followed by a detail card with the
+  full list for every source — all costs in one dashboard. GCP uses
+  US/Pacific month boundaries to match the Billing console. Use when the user asks to run the billing queries, refresh the
   cost dashboard, or see
   gcp_all_services/gcp_uk_api_cogs/gcp_uk_platform_cogs/gcp_uk_r&d_platform_cogs/gcp_uk_r&d_api_cogs/AWS/Vonage
   costs "together" or "in one place".
@@ -26,7 +27,23 @@ Runs `bigquery-sql/gcp_all_services.sql`, `bigquery-sql/gcp_uk_api_cogs.sql`,
 `bigquery-sql/vonage_services.sql` from this repo, and renders all of it as
 one combined Artifact, instead of separate ones.
 
-**Layout, as of 2026-09-01 (see step 3a/4 history):** the summary table at
+**Layout, as of 2026-10-05 — supersedes everything below about trimmed
+cards:** the user wants **all costs in one dashboard**. Keep the summary
+table at the top (step 3a), then one detail card per source, in this order,
+each with a top-10 bar chart (where it has more than one row) and its
+**full** list as a static HTML table, open by default, with a total row:
+GCP all services (full list from `gcp_all_services.sql` with `LIMIT 10`
+removed), GCP UK Platform COGS, GCP US Platform COGS, GCP UK R&D Platform
+COGS (each with `LIMIT 10` removed), GCP API COGS (the UK and UK R&D rows
+side by side, no combined total), AWS (environment split table, top-10
+chart, full service list from `aws_services.sql` with `LIMIT 10` removed),
+then Vonage (step 4 / the full Vonage breakdown note). Check every full list
+sums to its summary row. In the chat reply, always report every source —
+GCP, AWS and Vonage — never just the one that changed. Where the older text
+below says "only Vonage gets a card" or "don't re-add detail cards", it no
+longer applies.
+
+**Layout, as of 2026-09-01 (historical — see the 2026-10-05 note above):** the summary table at
 the top carries all nine totals — this is the primary output. Below it,
 only **one** source gets its own detail chart card: Vonage. The other seven
 (All services, Platform COGS, R&D Platform COGS, API COGS, R&D API COGS, AWS
@@ -38,6 +55,17 @@ services" in the summary table itself (see step 3a); GCP's Platform
 COGS/R&D Platform COGS/API COGS/R&D API COGS became indented (grouping-only,
 non-additive) sub-rows under "GCP All services" the same way — none of them
 disappeared, they just moved into the table.
+
+**Time zones (user, 2026-10-05):** the six GCP queries use **US/Pacific**
+month boundaries (`CURRENT_DATE('US/Pacific')`, `TIMESTAMP(..., 'US/Pacific')`)
+so they match the GCP Billing console and invoice — e.g. September 2026 UK
+Platform COGS Cost is USD 13,001.11 on both. AWS and Vonage stay on
+Europe/London dates. To run a specific month, pin the bounds in a scratchpad
+copy of each file (GCP: replace the `CURRENT_DATE('US/Pacific')` expressions;
+AWS/Vonage: the `CURRENT_DATE('Europe/London')` ones), and say on the page
+which time zone each source uses. When the user compares a figure with the
+console, compare it with the **Cost** column (before credits): console
+exports leave the credit lists blank, so their Subtotal equals Cost.
 
 ## Steps
 
@@ -201,6 +229,15 @@ disappeared, they just moved into the table.
    0. Like the AWS sub-rows they **sum exactly** to the Vonage parent row, so
    the caption must group them with AWS as the decomposing case. The Vonage
    bar chart card below stays as well.
+
+   **Full Vonage breakdown (user, 2026-10-05):** the Vonage card's table is
+   open by default (`<details open>`) and rendered as static HTML, one row
+   per category × `product` × `direction` with record counts and a total
+   row. Get it with an extra query on the same table and date window:
+   `SELECT category, product, direction, COUNT(*) n, ROUND(SUM(total_price),2)
+   cost ... GROUP BY 1,2,3`. Check its total and record count match
+   `vonage_services.sql` and the table's full row count, and say in the
+   caveat that nothing is unallocated (or flag any null/unexpected category).
 
    **Display labels (user, 2026-10-05):** the rows for `gcp_uk_platform_cogs.sql`
    and `gcp_uk_api_cogs.sql` are labelled "UK Platform COGS" and "UK API COGS"

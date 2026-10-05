@@ -34,8 +34,8 @@ FROM
 WHERE
   cost_type != 'tax'
   AND cost_type != 'adjustment'
-  AND usage_start_time >= TIMESTAMP(DATE_TRUNC(CURRENT_DATE('Europe/London'), MONTH), 'Europe/London')
-  AND usage_start_time < TIMESTAMP(DATE_ADD(DATE_TRUNC(CURRENT_DATE('Europe/London'), MONTH), INTERVAL 1 MONTH), 'Europe/London') )
+  AND usage_start_time >= TIMESTAMP(DATE_TRUNC(CURRENT_DATE('US/Pacific'), MONTH), 'US/Pacific')
+  AND usage_start_time < TIMESTAMP(DATE_ADD(DATE_TRUNC(CURRENT_DATE('US/Pacific'), MONTH), INTERVAL 1 MONTH), 'US/Pacific') )
 SELECT
 service.description AS `Service Description`,
 SUM(CAST(cost_at_list AS NUMERIC)) - SUM(CAST(spend_cud_fee_cost AS NUMERIC)) AS `Cost`,
