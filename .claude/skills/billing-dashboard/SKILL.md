@@ -1,11 +1,11 @@
 ---
 name: billing-dashboard
 description: >-
-  Runs all eight billing queries — five GCP (gcp_all_services.sql,
-  gcp_api_cogs.sql, gcp_platform_cogs.sql, gcp_r&d_platform_cogs.sql,
+  Runs all nine billing queries — six GCP (gcp_all_services.sql,
+  gcp_api_cogs.sql, gcp_platform_cogs.sql, gcp_us_platform_cogs.sql, gcp_r&d_platform_cogs.sql,
   gcp_r&d_api_cogs.sql), two AWS (aws_services.sql,
   aws_services_by_environment.sql), and Vonage (vonage_services.sql) —
-  publishing a single combined dashboard artifact. All eight totals appear in
+  publishing a single combined dashboard artifact. All nine totals appear in
   the summary table (GCP's four sub-sources and AWS's Production/Development
   split as indented rows); Vonage is the only source that still gets its own
   detail chart below it. Use when the user asks to run the billing queries, refresh the
@@ -17,7 +17,8 @@ description: >-
 # Billing dashboard
 
 Runs `bigquery-sql/gcp_all_services.sql`, `bigquery-sql/gcp_api_cogs.sql`,
-`bigquery-sql/gcp_platform_cogs.sql`, `` bigquery-sql/gcp_r&d_platform_cogs.sql ``,
+`bigquery-sql/gcp_platform_cogs.sql`, `bigquery-sql/gcp_us_platform_cogs.sql`,
+`` bigquery-sql/gcp_r&d_platform_cogs.sql ``,
 `` bigquery-sql/gcp_r&d_api_cogs.sql ``,
 `bigquery-sql/aws_services.sql` (or `aws_monthly_cost.sql` for last month),
 `bigquery-sql/aws_services_by_environment.sql` (or
@@ -26,7 +27,7 @@ Runs `bigquery-sql/gcp_all_services.sql`, `bigquery-sql/gcp_api_cogs.sql`,
 one combined Artifact, instead of separate ones.
 
 **Layout, as of 2026-09-01 (see step 3a/4 history):** the summary table at
-the top carries all eight totals — this is the primary output. Below it,
+the top carries all nine totals — this is the primary output. Below it,
 only **one** source gets its own detail chart card: Vonage. The other seven
 (All services, Platform COGS, R&D Platform COGS, API COGS, R&D API COGS, AWS
 top-10-by-service, AWS by-environment) were trimmed from detail-panel form —
@@ -40,12 +41,13 @@ disappeared, they just moved into the table.
 
 ## Steps
 
-1. **Run all eight queries** against `prj-ufonia-cmn-lon-billing-01`, one
+1. **Run all nine queries** against `prj-ufonia-cmn-lon-billing-01`, one
    `bq query --use_legacy_sql=false --project_id=prj-ufonia-cmn-lon-billing-01`
    call per file:
    - `bigquery-sql/gcp_all_services.sql`
    - `bigquery-sql/gcp_api_cogs.sql`
    - `bigquery-sql/gcp_platform_cogs.sql`
+   - `bigquery-sql/gcp_us_platform_cogs.sql`
    - `` bigquery-sql/gcp_r&d_platform_cogs.sql ``
    - `` bigquery-sql/gcp_r&d_api_cogs.sql ``
    - `bigquery-sql/aws_services.sql`
@@ -55,10 +57,11 @@ disappeared, they just moved into the table.
    These can run in parallel (independent Bash calls in one message — quote
    filenames containing `&`, e.g. `"bigquery-sql/gcp_r&d_platform_cogs.sql"`
    and `"bigquery-sql/gcp_r&d_api_cogs.sql"`, since `&` is a shell
-   metacharacter). All eight are needed even though only two get their own
+   metacharacter). All nine are needed even though only two get their own
    chart — the summary table (step 3a) uses every one of them.
 
-   `gcp_all_services.sql`, `gcp_platform_cogs.sql`, `` gcp_r&d_platform_cogs.sql ``,
+   `gcp_all_services.sql`, `gcp_platform_cogs.sql`, `gcp_us_platform_cogs.sql`,
+   `` gcp_r&d_platform_cogs.sql ``,
    and `aws_services.sql` are all capped
    at `LIMIT 10`, so for the summary table also run each one's
    un-limited equivalent (same CTE/filters, drop the `LIMIT 10` and the
@@ -110,6 +113,16 @@ disappeared, they just moved into the table.
    different project scope entirely, just happens to share a query shape).
    No longer gets its own chart card (trimmed 2026-09-01) — summary table row
    only.
+
+1a-2b. **`gcp_us_platform_cogs.sql` is another same-shape sibling of
+   `gcp_platform_cogs.sql`** (added 2026-10-05): same 24 service IDs, scoped
+   to the single US production project `prj-ufonia-prd-iowa-svc-02`
+   ("Dora Advanced Production", 736494139432). The user supplied it as a
+   raw console export, which carried the 5 IDs removed from Platform COGS in
+   August (see README Known issues); those were dropped to match, with no
+   effect on totals. Disjoint project scope, never additive with Platform
+   COGS. September 2026: 18 of 24 IDs matched, subtotal $1,993.22. Summary
+   table sub-row only, no chart card.
 
 1a-3. **`` gcp_r&d_api_cogs.sql `` is the same relationship, one level down**:
    a copy of `gcp_api_cogs.sql` (same single service ID, `63DE-82AB-F564`
@@ -168,14 +181,20 @@ disappeared, they just moved into the table.
    (lighter weight, `↳` prefix, `padding-left: 30px` on the first cell — see
    the published dashboard's `<style>` block for the exact rule):
    - GCP All services (gcp_all_services.sql)
-   - `sub-row`: ↳ GCP Platform COGS (gcp_platform_cogs.sql)
+   - `sub-row`: ↳ GCP UK Platform COGS (gcp_platform_cogs.sql)
+   - `sub-row`: ↳ GCP US Platform COGS (gcp_us_platform_cogs.sql)
    - `sub-row`: ↳ GCP R&D Platform COGS (`` gcp_r&d_platform_cogs.sql ``)
-   - `sub-row`: ↳ GCP API COGS (gcp_api_cogs.sql)
+   - `sub-row`: ↳ GCP UK API COGS (gcp_api_cogs.sql)
    - `sub-row`: ↳ GCP R&D API COGS (`` gcp_r&d_api_cogs.sql ``)
    - AWS All services (aws_services.sql)
    - `sub-row`: ↳ AWS Development (aws_services_by_environment.sql)
    - `sub-row`: ↳ AWS Production (aws_services_by_environment.sql)
    - Vonage all categories (vonage_services.sql)
+
+   **Display labels (user, 2026-10-05):** the rows for `gcp_platform_cogs.sql`
+   and `gcp_api_cogs.sql` are labelled "UK Platform COGS" and "UK API COGS"
+   (in the table and caption) to distinguish them from US Platform COGS. File
+   names are unchanged.
 
    Same Cost / Negotiated savings / Savings programmes / Other
    savings / Subtotal columns throughout, using the un-limited totals from
@@ -197,8 +216,8 @@ disappeared, they just moved into the table.
      `aws_monthly_cost_by_environment.sql` for last month). This is the one
      place in the table where indentation means "this decomposes the row
      above."
-   - Under **GCP All services**, the four sub-rows (Platform COGS, R&D
-     Platform COGS, API COGS, R&D API COGS) **do not sum** to the parent, nor
+   - Under **GCP All services**, the five sub-rows (Platform COGS, US
+     Platform COGS, R&D Platform COGS, API COGS, R&D API COGS) **do not sum** to the parent, nor
      to each other, nor combined to All services. They're indented purely to
      group them visually as GCP-scoped detail rows — not as a decomposition.
      Platform COGS and API COGS are genuine cost *subsets* of All services

@@ -34,6 +34,22 @@ Sorted `Subtotal DESC` and capped at `LIMIT 10`.
 track the two production projects above instead. The old 8-project scope is
 preserved as `bigquery-sql/gcp_r&d_platform_cogs.sql` — see below.
 
+### `bigquery-sql/gcp_us_platform_cogs.sql`
+
+Same shape and same 24 service IDs as `gcp_platform_cogs.sql`, scoped to the
+US production project:
+
+- Project: `prj-ufonia-prd-iowa-svc-02` (736494139432, "Dora Advanced Production").
+
+Added 2026-10-05 from a Billing console export, cleaned up the same way as
+the other COGS queries (see below). The console version also listed the 5
+IDs removed from `gcp_platform_cogs.sql` in August (`9B82-7513-9D1C`,
+`C5E6-A27F-6A44`, `FBF2-FC68-171A`, `2062-016F-44A2`, `1DB1-3CD3-35A3`); none
+had usage on this project, so they were dropped to keep the two lists the
+same. Disjoint project scope from `gcp_platform_cogs.sql`, so never additive
+with it. For September 2026, 18 of the 24 IDs matched at least one row.
+Sorted `Subtotal DESC` and capped at `LIMIT 10`.
+
 ### `` bigquery-sql/gcp_r&d_platform_cogs.sql ``
 
 Same shape and same 24 service IDs as `gcp_platform_cogs.sql`, scoped to 2
