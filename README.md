@@ -35,7 +35,7 @@ Sorted `Subtotal DESC` and capped at `LIMIT 10`.
 `prj-ufonia-stg-lon-svc-01`, `prj-ufonia-fls-trial-lon`,
 `prj-ufonia-prd-lon-svc-02`) — the user confirmed Platform COGS is meant to
 track the two production projects above instead. The old 8-project scope is
-preserved as `bigquery-sql/gcp_r&d_platform_cogs.sql` — see below.
+preserved as `bigquery-sql/gcp_uk_r&d_platform_cogs.sql` — see below.
 
 ### `bigquery-sql/gcp_us_platform_cogs.sql`
 
@@ -53,7 +53,10 @@ same. Disjoint project scope from `gcp_uk_platform_cogs.sql`, so never additive
 with it. For September 2026, 18 of the 24 IDs matched at least one row.
 Sorted `Subtotal DESC` and capped at `LIMIT 10`.
 
-### `` bigquery-sql/gcp_r&d_platform_cogs.sql ``
+### `` bigquery-sql/gcp_uk_r&d_platform_cogs.sql ``
+
+Renamed from `` gcp_r&d_platform_cogs.sql `` on 2026-10-05; shown as "UK R&D ..." in
+the billing dashboard.
 
 Same shape and same 24 service IDs as `gcp_uk_platform_cogs.sql`, scoped to 2
 dev projects:
@@ -87,11 +90,14 @@ for API-based services):
 - Projects: `prj-ufonia-prd-lon-svc-01` (870453169286), `prj-ufonia-prd-lon-host-01` (1025855247143)
 - Services: `63DE-82AB-F564` (Cloud Speech API)
 
-### `` bigquery-sql/gcp_r&d_api_cogs.sql ``
+### `` bigquery-sql/gcp_uk_r&d_api_cogs.sql ``
+
+Renamed from `` gcp_r&d_api_cogs.sql `` on 2026-10-05; shown as "UK R&D ..." in
+the billing dashboard.
 
 Same shape and same single service ID (`63DE-82AB-F564`, Cloud Speech API) as
 `gcp_uk_api_cogs.sql`, but scoped to the same 2 dev projects as
-`` gcp_r&d_platform_cogs.sql `` instead of the 2 production projects:
+`` gcp_uk_r&d_platform_cogs.sql `` instead of the 2 production projects:
 
 - Projects: `prj-ufonia-dev-host-01` (616882422931), `prj-ufonia-dev-lon-svc-01` (728785948359)
 
@@ -100,7 +106,7 @@ A copy of `gcp_uk_api_cogs.sql` with only the project filter changed, added
 **$0.0072** — de minimis dev usage, not zero, so it still renders (a stat
 tile, not "no matching rows"). Disjoint project scope from `gcp_uk_api_cogs.sql`
 (2 production projects), so never additive with it — same relationship as
-`` gcp_r&d_platform_cogs.sql `` has with `gcp_uk_platform_cogs.sql`.
+`` gcp_uk_r&d_platform_cogs.sql `` has with `gcp_uk_platform_cogs.sql`.
 
 ### `bigquery-sql/aws_services.sql`
 

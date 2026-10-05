@@ -2,15 +2,15 @@
 name: billing-dashboard
 description: >-
   Runs all nine billing queries — six GCP (gcp_all_services.sql,
-  gcp_uk_api_cogs.sql, gcp_uk_platform_cogs.sql, gcp_us_platform_cogs.sql, gcp_r&d_platform_cogs.sql,
-  gcp_r&d_api_cogs.sql), two AWS (aws_services.sql,
+  gcp_uk_api_cogs.sql, gcp_uk_platform_cogs.sql, gcp_us_platform_cogs.sql, gcp_uk_r&d_platform_cogs.sql,
+  gcp_uk_r&d_api_cogs.sql), two AWS (aws_services.sql,
   aws_services_by_environment.sql), and Vonage (vonage_services.sql) —
   publishing a single combined dashboard artifact. All nine totals appear in
   the summary table (GCP's four sub-sources and AWS's Production/Development
   split as indented rows); Vonage is the only source that still gets its own
   detail chart below it. Use when the user asks to run the billing queries, refresh the
   cost dashboard, or see
-  gcp_all_services/gcp_uk_api_cogs/gcp_uk_platform_cogs/gcp_r&d_platform_cogs/gcp_r&d_api_cogs/AWS/Vonage
+  gcp_all_services/gcp_uk_api_cogs/gcp_uk_platform_cogs/gcp_uk_r&d_platform_cogs/gcp_uk_r&d_api_cogs/AWS/Vonage
   costs "together" or "in one place".
 ---
 
@@ -18,8 +18,8 @@ description: >-
 
 Runs `bigquery-sql/gcp_all_services.sql`, `bigquery-sql/gcp_uk_api_cogs.sql`,
 `bigquery-sql/gcp_uk_platform_cogs.sql`, `bigquery-sql/gcp_us_platform_cogs.sql`,
-`` bigquery-sql/gcp_r&d_platform_cogs.sql ``,
-`` bigquery-sql/gcp_r&d_api_cogs.sql ``,
+`` bigquery-sql/gcp_uk_r&d_platform_cogs.sql ``,
+`` bigquery-sql/gcp_uk_r&d_api_cogs.sql ``,
 `bigquery-sql/aws_services.sql` (or `aws_monthly_cost.sql` for last month),
 `bigquery-sql/aws_services_by_environment.sql` (or
 `aws_monthly_cost_by_environment.sql` for last month), and
@@ -48,27 +48,27 @@ disappeared, they just moved into the table.
    - `bigquery-sql/gcp_uk_api_cogs.sql`
    - `bigquery-sql/gcp_uk_platform_cogs.sql`
    - `bigquery-sql/gcp_us_platform_cogs.sql`
-   - `` bigquery-sql/gcp_r&d_platform_cogs.sql ``
-   - `` bigquery-sql/gcp_r&d_api_cogs.sql ``
+   - `` bigquery-sql/gcp_uk_r&d_platform_cogs.sql ``
+   - `` bigquery-sql/gcp_uk_r&d_api_cogs.sql ``
    - `bigquery-sql/aws_services.sql`
    - `bigquery-sql/aws_services_by_environment.sql`
    - `bigquery-sql/vonage_services.sql`
 
    These can run in parallel (independent Bash calls in one message — quote
-   filenames containing `&`, e.g. `"bigquery-sql/gcp_r&d_platform_cogs.sql"`
-   and `"bigquery-sql/gcp_r&d_api_cogs.sql"`, since `&` is a shell
+   filenames containing `&`, e.g. `"bigquery-sql/gcp_uk_r&d_platform_cogs.sql"`
+   and `"bigquery-sql/gcp_uk_r&d_api_cogs.sql"`, since `&` is a shell
    metacharacter). All nine are needed even though only two get their own
    chart — the summary table (step 3a) uses every one of them.
 
    `gcp_all_services.sql`, `gcp_uk_platform_cogs.sql`, `gcp_us_platform_cogs.sql`,
-   `` gcp_r&d_platform_cogs.sql ``,
+   `` gcp_uk_r&d_platform_cogs.sql ``,
    and `aws_services.sql` are all capped
    at `LIMIT 10`, so for the summary table also run each one's
    un-limited equivalent (same CTE/filters, drop the `LIMIT 10` and the
    `GROUP BY`, just `SUM(...)` everything into one row) to get the true
    month-to-date total for each — the limited results understate the total
    once there are more than 10 services in scope. `gcp_uk_api_cogs.sql`,
-   `` gcp_r&d_api_cogs.sql ``, `vonage_services.sql`, and
+   `` gcp_uk_r&d_api_cogs.sql ``, `vonage_services.sql`, and
    `aws_services_by_environment.sql` have no
    `LIMIT` (at most 2, 1, 5, and 3 rows respectively), so their own output
    already is the true total — just sum their rows for the summary row (for
@@ -96,13 +96,13 @@ disappeared, they just moved into the table.
    summary table** (two indented sub-rows under "AWS All services" — see step
    3a), not its own chart card.
 
-1a-2. **`` gcp_r&d_platform_cogs.sql `` is a same-shape sibling of `gcp_uk_platform_cogs.sql`**,
+1a-2. **`` gcp_uk_r&d_platform_cogs.sql `` is a same-shape sibling of `gcp_uk_platform_cogs.sql`**,
    not a subset/superset relationship the way API COGS and Platform COGS are.
    History: until 2026-09-01, `gcp_uk_platform_cogs.sql` itself scoped to 8
    dev/staging/trial projects; the user then corrected it to scope to the
    two actual production projects (`prj-ufonia-prd-lon-host-01`,
    `prj-ufonia-prd-lon-svc-01` — same two as `gcp_uk_api_cogs.sql`). ``
-   gcp_r&d_platform_cogs.sql `` started as an unmodified copy of the file
+   gcp_uk_r&d_platform_cogs.sql `` started as an unmodified copy of the file
    from just before that correction (briefly covering all 8 of the old
    dev/staging/trial projects), then was narrowed the same day to just 2 of
    them: `prj-ufonia-dev-host-01` (616882422931),
@@ -124,10 +124,10 @@ disappeared, they just moved into the table.
    COGS. September 2026: 18 of 24 IDs matched, subtotal $1,993.22. Summary
    table sub-row only, no chart card.
 
-1a-3. **`` gcp_r&d_api_cogs.sql `` is the same relationship, one level down**:
+1a-3. **`` gcp_uk_r&d_api_cogs.sql `` is the same relationship, one level down**:
    a copy of `gcp_uk_api_cogs.sql` (same single service ID, `63DE-82AB-F564`
    Cloud Speech API) re-scoped to the same 2 dev projects as ``
-   gcp_r&d_platform_cogs.sql `` (`prj-ufonia-dev-host-01`,
+   gcp_uk_r&d_platform_cogs.sql `` (`prj-ufonia-dev-host-01`,
    `prj-ufonia-dev-lon-svc-01`) instead of `gcp_uk_api_cogs.sql`'s 2 production
    projects. Added 2026-09-01. Typically returns exactly 1 row and a very
    small figure (August 2026: $0.0072) — de minimis dev usage, not zero, so
@@ -183,9 +183,9 @@ disappeared, they just moved into the table.
    - GCP All services (gcp_all_services.sql)
    - `sub-row`: ↳ GCP UK Platform COGS (gcp_uk_platform_cogs.sql)
    - `sub-row`: ↳ GCP US Platform COGS (gcp_us_platform_cogs.sql)
-   - `sub-row`: ↳ GCP R&D Platform COGS (`` gcp_r&d_platform_cogs.sql ``)
+   - `sub-row`: ↳ GCP UK R&D Platform COGS (`` gcp_uk_r&d_platform_cogs.sql ``)
    - `sub-row`: ↳ GCP UK API COGS (gcp_uk_api_cogs.sql)
-   - `sub-row`: ↳ GCP R&D API COGS (`` gcp_r&d_api_cogs.sql ``)
+   - `sub-row`: ↳ GCP UK R&D API COGS (`` gcp_uk_r&d_api_cogs.sql ``)
    - AWS All services (aws_services.sql)
    - `sub-row`: ↳ AWS Development (aws_services_by_environment.sql)
    - `sub-row`: ↳ AWS Production (aws_services_by_environment.sql)
@@ -195,7 +195,9 @@ disappeared, they just moved into the table.
    and `gcp_uk_api_cogs.sql` are labelled "UK Platform COGS" and "UK API COGS"
    (in the table and caption) to distinguish them from US Platform COGS. The
    files themselves were renamed from `gcp_platform_cogs.sql` /
-   `gcp_api_cogs.sql` on 2026-10-05.
+   `gcp_api_cogs.sql` on 2026-10-05. Likewise the R&D rows are labelled
+   "UK R&D Platform COGS" and "UK R&D API COGS", and their files were renamed
+   from `gcp_r&d_platform_cogs.sql` / `gcp_r&d_api_cogs.sql` the same day.
 
    Same Cost / Negotiated savings / Savings programmes / Other
    savings / Subtotal columns throughout, using the un-limited totals from
@@ -295,7 +297,7 @@ disappeared, they just moved into the table.
      Vulnerability Scanning) is valid but had zero usage there last month
      (see README's Known issues) — re-derive this each run rather than
      assuming it's still true.
-   - `` gcp_r&d_platform_cogs.sql `` (summary row only): note explicitly
+   - `` gcp_uk_r&d_platform_cogs.sql `` (summary row only): note explicitly
      that despite the "R&D"
      label being informal (not an official GCP/billing-console term), this
      query's 2-project scope (`prj-ufonia-dev-host-01`,
@@ -305,7 +307,7 @@ disappeared, they just moved into the table.
      service IDs matched at least one row against this 2-project scope as of
      August 2026 (see README) — re-derive this each run rather than assuming
      it stays true.
-   - `` gcp_r&d_api_cogs.sql `` (summary row only, chart card removed
+   - `` gcp_uk_r&d_api_cogs.sql `` (summary row only, chart card removed
      2026-09-01): same query/service as
      `gcp_uk_api_cogs.sql`,
      disjoint project scope (2 dev projects — see step 1a-3). Normally 1 row
