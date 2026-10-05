@@ -27,6 +27,59 @@ Runs `bigquery-sql/gcp_all_services.sql`, `bigquery-sql/gcp_uk_api_cogs.sql`,
 `bigquery-sql/vonage_services.sql` from this repo, and renders all of it as
 one combined Artifact, instead of separate ones.
 
+## Building the page: `build_dashboard.py` (added 2026-10-05)
+
+Don't hand-write the HTML. `build_dashboard.py` (next to this file, with its
+stylesheet `dashboard.css.html`) builds the whole page — summary table,
+caption, every card — from the query outputs, and checks every total. The
+notes below describe what it produces; change the script, not a one-off page,
+when the user asks for a layout change, and record the change here.
+
+1. **Pin each query to the month** into a scratchpad copy (use `sed -E`; BSD
+   sed doesn't support `\|` and silently leaves the current month), drop
+   `LIMIT 10`, and fail if any `CURRENT_DATE` is left:
+
+   ```sh
+   W=<scratchpad>/billing; mkdir -p $W/sql $W/out
+   for f in gcp_invoice gcp_all_services gcp_uk_api_cogs gcp_uk_platform_cogs \
+            gcp_us_platform_cogs "gcp_uk_r&d_platform_cogs" "gcp_uk_r&d_api_cogs" \
+            aws_services aws_marketplace vonage_services; do
+     sed -E -e "s#FORMAT_DATE\('%Y%m', CURRENT_DATE\('US/Pacific'\)\)#'YYYYMM'#g" \
+       -e "s#DATE_ADD\(DATE_TRUNC\(CURRENT_DATE\('(US/Pacific|Europe/London)'\), MONTH\), INTERVAL 1 MONTH\)#DATE 'NEXT-MONTH-01'#g" \
+       -e "s#DATE_TRUNC\(CURRENT_DATE\('(US/Pacific|Europe/London)'\), MONTH\)#DATE 'YYYY-MM-01'#g" \
+       -e '/^LIMIT 10$/d' "bigquery-sql/$f.sql" > "$W/sql/$f.sql"
+     grep -q CURRENT_DATE "$W/sql/$f.sql" && echo "UNPATCHED $f"
+   done
+   ```
+
+2. **Run each one on stdin** (a `--` comment passed as an argument is parsed
+   as a flag): `bq query --quiet --use_legacy_sql=false
+   --project_id=prj-ufonia-cmn-lon-billing-01 --format=json --max_rows=1000
+   < $W/sql/$f.sql > $W/out/$f.json`. They can run in parallel.
+
+3. **Helper queries** (same month window), saved to `$W/out/`:
+   - `aws_split.json` — exact AWS totals, including VAT:
+     `SELECT IF(REGEXP_CONTAINS(line_item_product_code, r'^[a-z0-9]{20,}$'),
+     'Marketplace','AWS') src, CASE WHEN cost_category_production =
+     'Production' THEN 'Production' WHEN cost_category_development =
+     'Development' THEN 'Development' ELSE 'Uncategorized' END env,
+     ROUND(SUM(line_item_unblended_cost),2) cost FROM <aws table> WHERE
+     usage_date in the month GROUP BY ROLLUP(1,2)`
+   - `vonage_breakdown.json` — `SELECT IFNULL(category,'(null)') category,
+     IFNULL(product,'(null)') product, IFNULL(direction,'—') direction,
+     COUNT(*) n, ROUND(SUM(total_price),2) cost ... GROUP BY 1,2,3`
+   - `vonage_meta.json` — `SELECT MIN(usage_date) mn, MAX(usage_date) mx,
+     COUNTIF(IFNULL(currency,'')='') blank, COUNT(*) n ...`
+   - `coverage.json` — for the 24 platform service IDs, one row per scope
+     (`uk` = 1025855247143/870453169286, `us` = 736494139432, `rd` = the two
+     dev projects) with `missing` = the IDs with no usage that month
+     (US/Pacific window).
+
+4. **Build and publish:** `python3 .claude/skills/billing-dashboard/build_dashboard.py
+   $W YYYY-MM`, then publish `$W/billing-dashboard.html` to the existing
+   Billing Dashboard artifact. An `AssertionError` means a total didn't
+   reconcile: investigate it rather than editing the check away.
+
 **Layout, as of 2026-10-05 — supersedes everything below about trimmed
 cards:** the user wants **all costs in one dashboard**. Keep the summary
 table at the top (step 3a), then one detail card per source, in this order,
@@ -71,8 +124,8 @@ the cent, and explain in the caption why the usage rows don't match it.
 
 **All Production / All Development Costs (removed 2026-10-05):** the user
 had these added as sub-rows and cards, then asked for them to be removed the
-same day. `gcp_all_production.sql` and `gcp_all_development.sql` stay in the
-repo but are **not** run or shown on the dashboard. Don't re-add them
+same day, and their SQL files (`gcp_all_production.sql`,
+`gcp_all_development.sql`) were deleted from the repo. Don't re-add them
 without the user asking.
 
 **AWS includes VAT (user, 2026-10-05):** the AWS queries no longer
