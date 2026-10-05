@@ -1,11 +1,11 @@
 ---
 name: billing-dashboard
 description: >-
-  Runs all twelve billing queries — nine GCP (gcp_invoice.sql, gcp_all_services.sql, gcp_all_production.sql, gcp_all_development.sql,
+  Runs all eleven billing queries — seven GCP (gcp_invoice.sql, gcp_all_services.sql,
   gcp_uk_api_cogs.sql, gcp_uk_platform_cogs.sql, gcp_us_platform_cogs.sql, gcp_uk_r&d_platform_cogs.sql,
-  gcp_uk_r&d_api_cogs.sql), two AWS (aws_services.sql,
-  aws_services_by_environment.sql), and Vonage (vonage_services.sql) —
-  publishing a single combined dashboard artifact. All twelve totals appear in
+  gcp_uk_r&d_api_cogs.sql), three AWS (aws_services.sql,
+  aws_services_by_environment.sql, aws_marketplace.sql), and Vonage (vonage_services.sql) —
+  publishing a single combined dashboard artifact. All eleven totals appear in
   the summary table (GCP's COGS rows, AWS's Production/Development split and
   Vonage's categories as indented rows), followed by a detail card with the
   full list for every source — all costs in one dashboard. GCP uses
@@ -69,24 +69,43 @@ invoice = invoice-month total, minus each Marketplace seller and rounding =
 the Google invoice. Assert the reconciliation lands on the invoice figure to
 the cent, and explain in the caption why the usage rows don't match it.
 
-**All Production Costs (user, 2026-10-05):** also run
-`bigquery-sql/gcp_all_production.sql` — the 24 platform service IDs across all
-8 production projects (UK, US, orbit, data science). It is the **first**
-sub-row under GCP All services ("GCP All Production Costs", Cost before
-credits; Sept 2026 USD 17,026.39) and gets its own card right after the GCP
-all-services card. It includes UK and US Platform COGS but not UK R&D or the
-Speech API rows; the caption must say so.
+**All Production / All Development Costs (removed 2026-10-05):** the user
+had these added as sub-rows and cards, then asked for them to be removed the
+same day. `gcp_all_production.sql` and `gcp_all_development.sql` stay in the
+repo but are **not** run or shown on the dashboard. Don't re-add them
+without the user asking.
 
-**All Development Costs (user, 2026-10-05):** also run
-`bigquery-sql/gcp_all_development.sql` — **every** service (no service.id
-filter) across the 4 development projects (`prj-ufonia-dev-lon-svc-01`,
-`prj-ufonia-dev-host-01`, `prj-ufonia-dev-iowa-svc-02`,
-`prj-ufonia-dev-iowa-host-01`). Second sub-row under GCP All services, right
-after All Production Costs ("GCP All Development Costs", Cost before
-credits; Sept 2026 USD 8,139.41), with its own card after the All Production
-card. It includes UK R&D Platform COGS and UK R&D API COGS. Note in the
-caption that Production is platform services only while Development is all
-services, so the two aren't like-for-like.
+**AWS includes VAT (user, 2026-10-05):** the AWS queries no longer
+exclude `line_item_type = 'Tax'`, so AWS figures include 20% UK VAT and
+match the AWS console (Sept 2026 Production USD 1,643.48 = 1,369.53 +
+273.95 VAT). Don't show VAT as its own row; label the rows "AWS All services
+(excluding Marketplace, inc VAT)", "AWS Development (inc VAT)" and "AWS
+Production (inc VAT)". Marketplace products carry no VAT. The exact-totals
+ROLLUP query must include tax rows too.
+
+**AWS Marketplace (user, 2026-10-05):** `aws_services.sql` and
+`aws_services_by_environment.sql` exclude AWS Marketplace charges
+(`line_item_product_code` matching `^[a-z0-9]{20,}$`, e.g. the "(Amazon
+Bedrock Edition)" Claude/OpenAI models); `aws_marketplace.sql` lists them.
+Summary rows, in this order (user, 2026-10-05): a top-level "AWS
+Marketplace (third-party, billed via AWS)" row, then "AWS All services
+(excluding Marketplace, inc VAT)" with the Development/Production sub-rows (which sum
+to it), mirroring GCP's Marketplace-above-All-services order. Sept 2026 inc VAT: USD 5,358.53
+(Dev 3,715.05, Prod 1,643.48) + Marketplace USD 430.95 = USD 5,789.48. Take
+the summary totals from one exact `ROLLUP(source, environment)` query rather
+than summing per-service rounded rows, and assert AWS + Marketplace equals
+the all-in total. The AWS card adds a Marketplace product table.
+
+**GCP row order (user, 2026-10-05) — supersedes the order listed in step
+3a:** under GCP All services, group UK together, then US: UK Platform COGS,
+UK API COGS, UK R&D Platform COGS, UK R&D API COGS, then US Platform COGS.
+Detail cards follow the same grouping: UK Platform COGS, UK R&D Platform
+COGS, UK API COGS (Cloud Speech API, production and dev), then US Platform
+COGS, then AWS and Vonage.
+
+**Summary table layout (user, 2026-10-05):** label the row "GCP All services
+(after credits)", and keep the first column on one line (`white-space:
+nowrap; width: 1%` on the first cell, wrapping allowed only below 480px wide).
 
 **Single Cost column (user, 2026-10-05) — supersedes the five-column
 layout described in step 3a:** the summary table has just **Source | Cost**.

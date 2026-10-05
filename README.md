@@ -176,6 +176,22 @@ This replaced an earlier AWS Cost Explorer script (`aws/services.sh`,
 account `102369858221`) that was removed once this pipeline reached
 parity for the dashboard's needs.
 
+### `bigquery-sql/aws_marketplace.sql`
+
+AWS Marketplace charges for the current calendar month: third-party
+products billed through AWS, such as the "(Amazon Bedrock Edition)" Claude
+and OpenAI models. They're identified by `line_item_product_code` being a
+Marketplace product ID (20+ lowercase letters/digits) rather than an AWS
+service code like `AmazonEC2`. Since 2026-10-05, `aws_services.sql`,
+`aws_services_by_environment.sql` and both `aws_monthly_cost*.sql` files
+exclude these rows. September 2026: $430.95 Marketplace, $5,358.53 AWS
+excluding Marketplace ($5,789.48 in all, including VAT).
+
+**VAT (since 2026-10-05):** all the AWS queries include `line_item_type =
+'Tax'` rows, so AWS figures include 20% UK VAT and match the AWS console
+(September 2026 Production: $1,369.53 + $273.95 VAT = $1,643.48).
+Marketplace products carry no VAT. The GCP export has no tax lines.
+
 ### `bigquery-sql/aws_services_by_environment.sql`
 
 Same source table and window as `aws_services.sql` (current calendar month),
