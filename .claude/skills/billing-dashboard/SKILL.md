@@ -1,11 +1,11 @@
 ---
 name: billing-dashboard
 description: >-
-  Runs all nine billing queries — six GCP (gcp_all_services.sql,
+  Runs all twelve billing queries — nine GCP (gcp_invoice.sql, gcp_all_services.sql, gcp_all_production.sql, gcp_all_development.sql,
   gcp_uk_api_cogs.sql, gcp_uk_platform_cogs.sql, gcp_us_platform_cogs.sql, gcp_uk_r&d_platform_cogs.sql,
   gcp_uk_r&d_api_cogs.sql), two AWS (aws_services.sql,
   aws_services_by_environment.sql), and Vonage (vonage_services.sql) —
-  publishing a single combined dashboard artifact. All nine totals appear in
+  publishing a single combined dashboard artifact. All twelve totals appear in
   the summary table (GCP's COGS rows, AWS's Production/Development split and
   Vonage's categories as indented rows), followed by a detail card with the
   full list for every source — all costs in one dashboard. GCP uses
@@ -55,6 +55,50 @@ services" in the summary table itself (see step 3a); GCP's Platform
 COGS/R&D Platform COGS/API COGS/R&D API COGS became indented (grouping-only,
 non-additive) sub-rows under "GCP All services" the same way — none of them
 disappeared, they just moved into the table.
+
+**GCP invoice (user, 2026-10-05):** also run `bigquery-sql/gcp_invoice.sql`
+(for a specific month, replace `FORMAT_DATE('%Y%m', CURRENT_DATE('US/Pacific'))`
+with the literal `'YYYYMM'`). It reproduces Google's monthly invoice exactly
+(Sept 2026: USD 40,424.12): grouped by `invoice.month`, all cost types,
+seller = Google only. Add two top-level summary rows **above** GCP All
+services: "GCP Invoice (Google)" and "GCP Marketplace (invoiced separately)"
+(sum of the Marketplace sellers). Then make the **first** detail card "GCP —
+<Month> invoice": a by-seller table plus a reconciliation table — GCP All
+services (usage dates, after credits) + late-reported usage billed on the
+invoice = invoice-month total, minus each Marketplace seller and rounding =
+the Google invoice. Assert the reconciliation lands on the invoice figure to
+the cent, and explain in the caption why the usage rows don't match it.
+
+**All Production Costs (user, 2026-10-05):** also run
+`bigquery-sql/gcp_all_production.sql` — the 24 platform service IDs across all
+8 production projects (UK, US, orbit, data science). It is the **first**
+sub-row under GCP All services ("GCP All Production Costs", Cost before
+credits; Sept 2026 USD 17,026.39) and gets its own card right after the GCP
+all-services card. It includes UK and US Platform COGS but not UK R&D or the
+Speech API rows; the caption must say so.
+
+**All Development Costs (user, 2026-10-05):** also run
+`bigquery-sql/gcp_all_development.sql` — **every** service (no service.id
+filter) across the 4 development projects (`prj-ufonia-dev-lon-svc-01`,
+`prj-ufonia-dev-host-01`, `prj-ufonia-dev-iowa-svc-02`,
+`prj-ufonia-dev-iowa-host-01`). Second sub-row under GCP All services, right
+after All Production Costs ("GCP All Development Costs", Cost before
+credits; Sept 2026 USD 8,139.41), with its own card after the All Production
+card. It includes UK R&D Platform COGS and UK R&D API COGS. Note in the
+caption that Production is platform services only while Development is all
+services, so the two aren't like-for-like.
+
+**Single Cost column (user, 2026-10-05) — supersedes the five-column
+layout described in step 3a:** the summary table has just **Source | Cost**.
+GCP All services shows its **Subtotal** (after credits) as its Cost. The five
+GCP COGS rows show **Cost before credits** (the query's `Cost` column) —
+COGS is reported on that basis and it matches the Billing console (Sept 2026
+UK Platform COGS USD 13,001.11). AWS = UnblendedCost, Vonage = summed EUR
+price. No Subtotal, Negotiated savings, Savings programmes or Other savings
+columns anywhere, including the detail cards: the GCP all-services card lists
+each service's Subtotal as "cost after credits"; the COGS cards list each
+service's Cost as "cost before credits", sorted and charted on that value.
+The caption must say which basis each row uses.
 
 **Time zones (user, 2026-10-05):** the six GCP queries use **US/Pacific**
 month boundaries (`CURRENT_DATE('US/Pacific')`, `TIMESTAMP(..., 'US/Pacific')`)
