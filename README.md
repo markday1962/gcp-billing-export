@@ -110,8 +110,8 @@ tile, not "no matching rows"). Disjoint project scope from `gcp_uk_api_cogs.sql`
 
 ### `bigquery-sql/aws_services.sql`
 
-Cost by service for the current calendar month (Europe/London, matching
-`gcp_all_services.sql`'s window), for AWS account `453829601976`. Sourced from
+Cost by service for the current calendar month (Europe/London; the GCP
+queries use US/Pacific to match the Billing console), for AWS account `453829601976`. Sourced from
 `bg_dataset_aws_cost_and_usage.aws_cost_and_usage`, a BigQuery table
 populated daily by a separate CUR-to-BigQuery import pipeline — see
 `aws-bigquery-loader/README.md` for the full design (AWS Data Export → keyless OIDC
@@ -160,8 +160,8 @@ For the previous calendar month instead, see
 ### `bigquery-sql/vonage_services.sql`
 
 Cost by category (`SMS`, `Inbound Calls`, `Outbound Calls`, `WebSocket`,
-`Other`) for the current calendar month (Europe/London, matching
-`gcp_all_services.sql`'s window), sourced from
+`Other`) for the current calendar month (Europe/London; the GCP queries
+use US/Pacific to match the Billing console), sourced from
 `bq_dataset_vonage_cost_and_usage.vonage_cost_and_usage`, a BigQuery table
 populated daily by the Vonage Reports API import pipeline — see
 `vonage-bigquery-loader/README.md` for the full design. No `LIMIT` (at most
@@ -185,7 +185,7 @@ date range. Cleanup applied to all three:
 
 - **Parameterized the date range.** Replaced the hardcoded `usage_start_time`
   bounds (e.g. `'2026-08-01T00:00:00 US/Pacific'`) with a rolling
-  current-calendar-month window based on `CURRENT_DATE('Europe/London')`, so
+  current-calendar-month window based on `CURRENT_DATE('US/Pacific')`, so
   the query always reflects the current month without manual edits. All
   three queries currently use the current month. `gcp_uk_api_cogs.sql` and
   `gcp_uk_platform_cogs.sql` are intended to run a month in arrears (previous
@@ -193,10 +193,16 @@ date range. Cleanup applied to all three:
   table — right now the table only contains data from 2026-08-01 onward, so
   a previous-month window returns nothing. To switch them to previous-month,
   change the bounds to:
-  `usage_start_time >= TIMESTAMP(DATE_TRUNC(DATE_SUB(CURRENT_DATE('Europe/London'), INTERVAL 1 MONTH), MONTH), 'Europe/London')`
+  `usage_start_time >= TIMESTAMP(DATE_TRUNC(DATE_SUB(CURRENT_DATE('US/Pacific'), INTERVAL 1 MONTH), MONTH), 'US/Pacific')`
   and
-  `usage_start_time < TIMESTAMP(DATE_TRUNC(CURRENT_DATE('Europe/London'), MONTH), 'Europe/London')`.
-- **Switched timezone from `US/Pacific` to `Europe/London`.**
+  `usage_start_time < TIMESTAMP(DATE_TRUNC(CURRENT_DATE('US/Pacific'), MONTH), 'US/Pacific')`.
+- **Timezone: US/Pacific (reverted 2026-10-05).** The queries were briefly
+  switched to `Europe/London`, but that shifts the month boundaries 8 hours
+  earlier than the GCP Billing console and Google's invoice month, which use
+  US/Pacific. For September 2026 that made `gcp_uk_platform_cogs.sql`'s Cost
+  $12,990.70 instead of the console's $13,001.11. All six GCP queries now use
+  US/Pacific again, so they reconcile with the console. The AWS and Vonage
+  queries still use Europe/London calendar dates.
 - **Removed the vestigial `spend_cud_fee_skus` CTE.** It was an empty SKU
   list (`UNNEST([''])`) left over from the console template, meaning
   `spend_cud_fee_cost` always evaluated to `0` via an `IN` subquery that could
