@@ -5,7 +5,8 @@ description: >-
   gcp_uk_api_cogs.sql, gcp_uk_platform_cogs.sql, gcp_us_platform_cogs.sql, gcp_uk_r&d_platform_cogs.sql,
   gcp_uk_r&d_api_cogs.sql), three AWS (aws_services.sql,
   aws_services_by_environment.sql, aws_marketplace.sql), and Vonage (vonage_services.sql) —
-  publishing a single combined dashboard artifact. All eleven totals appear in
+  publishing a single combined dashboard artifact and saving a PDF report
+  with a data timestamp to reports/ on every run. All eleven totals appear in
   the summary table (GCP's COGS rows, AWS's Production/Development split and
   Vonage's categories as indented rows), followed by a detail card with the
   full list for every source — all costs in one dashboard. GCP uses
@@ -73,12 +74,34 @@ when the user asks for a layout change, and record the change here.
    - `coverage.json` — for the 24 platform service IDs, one row per scope
      (`uk` = 1025855247143/870453169286, `us` = 736494139432, `rd` = the two
      dev projects) with `missing` = the IDs with no usage that month
-     (US/Pacific window).
+     (US/Pacific window). Write it as a `CROSS JOIN ids LEFT JOIN used`
+     with `ARRAY_AGG(... IGNORE NULLS)`: a `NOT IN (correlated subquery)`
+     is rejected by BigQuery.
+   - `freshness.json` — the data timestamp for the PDF, two rows `s`/`t`:
+     `SELECT 'gcp' s, FORMAT_TIMESTAMP('%Y-%m-%d %H:%M UTC', MAX(export_time))
+     t FROM <gcp export table> WHERE invoice.month = 'YYYYMM' UNION ALL SELECT
+     'aws', CAST(MAX(usage_date) AS STRING) FROM <aws table> WHERE usage_date
+     in the month`. (Vonage's latest date comes from `vonage_meta.json`.)
+
+   macOS ships bash 3.2, so put steps 1–3 in a script file in the scratchpad
+   and run it with `bash <file>` rather than one long inline command.
 
 4. **Build and publish:** `python3 .claude/skills/billing-dashboard/build_dashboard.py
    $W YYYY-MM`, then publish `$W/billing-dashboard.html` to the existing
    Billing Dashboard artifact. An `AssertionError` means a total didn't
    reconcile: investigate it rather than editing the check away.
+
+5. **Save a PDF report every run (user, 2026-11-10):**
+   `python3 .claude/skills/billing-dashboard/build_pdf.py $W YYYY-MM reports`.
+   It prints the built page with headless Chrome (A4, light theme) to
+   `reports/billing-report-YYYY-MM_data-<YYYY-MM-DDTHHMM>.pdf`, with a
+   "Data timestamp" box under the title: when the queries ran, the latest GCP
+   export time, the latest AWS and Vonage usage dates, and the report period.
+   The second date in the filename is the query run time, so re-running a
+   month adds a new file rather than overwriting. Check page 1 renders (e.g.
+   `qlmanage -t -s 1400 -o <scratchpad>/pdfprev <pdf>` and view the PNG),
+   then give the user the path. Don't commit it unless asked; when asked,
+   commit on a branch (not `main`) and open a PR.
 
 **Layout, as of 2026-10-05 — supersedes everything below about trimmed
 cards:** the user wants **all costs in one dashboard**. Keep the summary
